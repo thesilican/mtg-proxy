@@ -1,0 +1,5 @@
+.env
+*.pdf
+target/
+frontend/dist/
+frontend/node_modules/
