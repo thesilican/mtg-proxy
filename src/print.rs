@@ -94,7 +94,7 @@ impl Printer {
         let chunk_size = options.card_count() as usize;
 
         // Consume pngs directly to save some memory
-        while cards.is_empty() {
+        while !cards.is_empty() {
             let mut chunk = Vec::new();
             let mut count = 0;
             while let Some(card) = cards.pop() {
