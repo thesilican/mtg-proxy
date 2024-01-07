@@ -33,6 +33,7 @@ pub const DEFAULT_OPTIONS: PrintOptions = PrintOptions {
     line_len: 40,
     line_width: 1,
     line_color: Rgba([0x7f, 0x7f, 0x7f, 0xff]),
+    black_bleed: 8,
     // Letter size paper
     page_width: 595,
     page_height: 792,
@@ -51,6 +52,8 @@ pub struct PrintOptions {
     pub line_width: u32,
     /// Color of cut guide lines
     pub line_color: Rgba<u8>,
+    /// Number of pixels of black border bleed
+    pub black_bleed: u32,
     /// Width of the page in PDF units
     pub page_width: u32,
     /// Height of the page in PDF units
@@ -198,11 +201,17 @@ impl Printer {
         }
 
         // Overlay black background
-        let mut black = RgbaImage::new(WIDTH * cols, HEIGHT * rows);
+        let pad = options.black_bleed;
+        let mut black = RgbaImage::new(WIDTH * cols + (2 * pad), HEIGHT * rows + (2 * pad));
         for pixel in black.pixels_mut() {
             *pixel = Rgba([0x00, 0x00, 0x00, 0xff]);
         }
-        overlay(&mut page, &black, line_len as i64, line_len as i64);
+        overlay(
+            &mut page,
+            &black,
+            (line_len - pad) as i64,
+            (line_len - pad) as i64,
+        );
         drop(black);
 
         // Overlay images
