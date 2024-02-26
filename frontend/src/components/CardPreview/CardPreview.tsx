@@ -11,6 +11,7 @@ import {
   bottom,
   cardStyle,
   container,
+  flip,
   img,
   number,
   remove,
@@ -45,9 +46,12 @@ function Card(props: CardProps) {
     cardData?.data.map((x) => `${x.set_name} (${x.collector_number})`) ?? [];
 
   const activeVariant = cardData?.data[card.variant];
+  const isDFC = activeVariant
+    ? (activeVariant?.card_faces?.length ?? 1) > 1
+    : undefined;
   const imgSrc =
     activeVariant && cardStatus === QueryStatus.fulfilled
-      ? getImageUrl(activeVariant)
+      ? getImageUrl(activeVariant, card.face)
       : loadingPng;
 
   useEffect(() => {
@@ -55,11 +59,17 @@ function Card(props: CardProps) {
     if (!isNaN(num)) {
       dispatch(printAction.update({ idx: props.idx, card: { quantity: num } }));
     }
-  }, [quantity]);
+  }, [dispatch, props.idx, quantity]);
 
   const handleVariantChange = (e: ChangeEvent<HTMLSelectElement>) => {
     const variant = parseInt(e.target.value, 10);
     dispatch(printAction.update({ idx: props.idx, card: { variant } }));
+  };
+
+  const handleFlip = () => {
+    dispatch(
+      printAction.update({ idx: props.idx, card: { face: 1 - card.face } })
+    );
   };
 
   const handleRemove = () => {
@@ -78,7 +88,14 @@ function Card(props: CardProps) {
           onChange={(e) => setQuantity(e.target.value)}
         />
         <div className={spacer} />
-        {/* <Button className={cn("material-symbols-outlined", flip)}>flip</Button> */}
+        {isDFC && (
+          <Button
+            className={cn("material-symbols-outlined", flip)}
+            onClick={handleFlip}
+          >
+            flip
+          </Button>
+        )}
         <Button
           className={cn("material-symbols-outlined", remove)}
           onClick={handleRemove}

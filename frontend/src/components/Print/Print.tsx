@@ -9,9 +9,11 @@ export function Print() {
   const [message, setMessage] = useState("Print");
 
   const handleClick = async () => {
-    const cardIds = cards.flatMap((x) =>
-      Array(x.quantity).fill(x.ids[x.variant])
-    );
+    const cardOptions = cards.map((x) => ({
+      id: x.ids[x.variant],
+      face: x.face === 0 ? "front" : "back",
+      quantity: x.quantity,
+    }));
     setMessage("Printing...");
     const result = await fetch(resolveLocalUrl("api/print"), {
       method: "POST",
@@ -19,14 +21,14 @@ export function Print() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        cards: cardIds,
+        cards: cardOptions,
       }),
     }).catch((err) => {
       console.error(err);
-      setMessage("Error printing");
       return null;
     });
-    if (!result) {
+    if (!result || result.status !== 200) {
+      setMessage("Error printing");
       return;
     }
     setMessage("Print");

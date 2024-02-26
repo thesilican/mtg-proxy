@@ -5,9 +5,9 @@ use axum::{
     Router,
 };
 use log::{info, LevelFilter};
-use mtg_proxy::{get_ping, log_middleware, post_print, Printer};
-use std::{future::IntoFuture, path::PathBuf, time::Duration};
-use tokio::{net::TcpListener, select, signal::ctrl_c, task::JoinHandle, time::interval};
+use mtg_proxy::{get_ping, log_middleware, post_print};
+use std::{future::IntoFuture, path::PathBuf};
+use tokio::{net::TcpListener, select, signal::ctrl_c};
 use tower_http::services::ServeDir;
 
 #[tokio::main]
@@ -21,26 +21,6 @@ async fn main() -> Result<()> {
         .parse_default_env()
         .init();
 
-    let printer = Printer::new();
-
-    let timer: JoinHandle<Result<()>> = {
-        let printer = printer.clone();
-        tokio::spawn(async move {
-            let mut ticker = interval(Duration::from_secs(1));
-            loop {
-                select! {
-                    res = ctrl_c() => {
-                        res?;
-                        break;
-                    }
-                    _ = ticker.tick() => {}
-                }
-                printer.prune_cache()?;
-            }
-            Ok(())
-        })
-    };
-
     let public_dir = PathBuf::from(option_env!("PUBLIC_DIR").unwrap_or("frontend/dist"))
         .canonicalize()
         .context("Could not load PUBLIC_DIR")?;
@@ -51,8 +31,7 @@ async fn main() -> Result<()> {
         .route("/api/ping", get(get_ping))
         .route("/api/print", post(post_print))
         .fallback_service(file_serve)
-        .layer(from_fn(log_middleware))
-        .with_state(printer);
+        .layer(from_fn(log_middleware));
 
     let port = std::env::var("PORT")
         .map(|arg| arg.parse::<u16>().ok())
@@ -62,15 +41,18 @@ async fn main() -> Result<()> {
     info!("Starting server on port {port}");
     let listener = TcpListener::bind(("0.0.0.0", port)).await?;
     let server = axum::serve(listener, app).into_future();
+
     select! {
         res = server => {
-            res.context("Error running server")
+            res.context("error running server")
         }
-        res = timer => {
+        res = ctrl_c() => {
             match res {
-                Ok(Ok(())) => Ok(()),
-                Ok(Err(err)) => Err(err),
-                Err(err) => Err(err).context("Error joining timer")
+                Ok(()) => {
+                    info!("Stopping server");
+                    Ok(())
+                },
+                Err(err) => Err(err).context("error joining timer")
             }
         }
     }

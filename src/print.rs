@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use image::{
     codecs::png::PngDecoder, imageops::overlay, DynamicImage, GenericImageView, ImageDecoder, Rgba,
     RgbaImage,
@@ -9,23 +9,50 @@ use lopdf::{
     content::{Content, Operation},
     dictionary, Document, Object, Stream,
 };
-use std::{io::BufReader, time::Duration};
+use serde::Deserialize;
+use std::{collections::HashMap, io::BufReader, sync::Arc, time::Duration};
 use tokio::{join, task::spawn_blocking, time::sleep};
 use uuid::Uuid;
 
-use crate::cache::Cache;
+#[derive(Deserialize, Clone, Copy, PartialEq, Eq, Hash)]
+#[serde(rename_all = "lowercase")]
+pub enum CardFace {
+    Front,
+    Back,
+}
+impl CardFace {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            CardFace::Front => "front",
+            CardFace::Back => "back",
+        }
+    }
+}
 
-/// Width of a card image in pixels
-const WIDTH: u32 = 745;
+#[derive(Deserialize, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct CardOptions {
+    pub id: Uuid,
+    pub face: CardFace,
+    pub quantity: u32,
+}
 
-/// Height of a card image in pixels
-const HEIGHT: u32 = 1040;
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct CardKey {
+    id: Uuid,
+    face: CardFace,
+}
 
-/// How long to keep images in cache
-const TTL: Duration = Duration::from_secs(3600);
+impl From<CardOptions> for CardKey {
+    fn from(value: CardOptions) -> Self {
+        CardKey {
+            id: value.id,
+            face: value.face,
+        }
+    }
+}
 
 /// Default options when printing
-pub const DEFAULT_OPTIONS: PrintOptions = PrintOptions {
+pub const DEFAULT_PAGE_OPTIONS: PageOptions = PageOptions {
     // 3x3 by default
     rows: 3,
     cols: 3,
@@ -39,9 +66,9 @@ pub const DEFAULT_OPTIONS: PrintOptions = PrintOptions {
     page_height: 792,
 };
 
-/// Options for printing cards
-#[derive(Clone)]
-pub struct PrintOptions {
+/// Measurements for laying cards on a page
+#[derive(Clone, Copy)]
+pub struct PageOptions {
     /// Number of rows of cards per page
     pub rows: u32,
     /// Number of cols of cards per page
@@ -60,111 +87,116 @@ pub struct PrintOptions {
     pub page_height: u32,
 }
 
-impl PrintOptions {
+impl PageOptions {
     fn card_count(&self) -> u32 {
         self.rows * self.cols
     }
 }
 
-#[derive(Clone)]
-pub struct Printer {
-    cache: Cache,
+fn mb_string(bytes: usize) -> String {
+    format!("{:0.2}MB", bytes as f64 / 1_000_000.0)
 }
 
+pub struct Printer;
+
 impl Printer {
-    pub fn new() -> Self {
-        Printer {
-            cache: Cache::new(),
-        }
-    }
-
-    pub fn prune_cache(&self) -> Result<()> {
-        self.cache.prune()
-    }
-
-    pub async fn print(&self, card_ids: &[Uuid], options: &PrintOptions) -> Result<Vec<u8>> {
+    pub async fn print(cards: &[CardOptions], options: &PageOptions) -> Result<Vec<u8>> {
         // Fetch cards
-        let mut cards = self.fetch_cards(card_ids).await?;
-        // Reverse in place, so that they're popped in the right order
-        cards.reverse();
-        debug!("card count: {}", cards.len());
-        debug!(
-            "cards size: {} bytes",
-            cards.iter().map(|card| card.len()).sum::<usize>()
-        );
+        let card_pngs = Printer::fetch_cards(cards).await?;
 
-        let mut pages = Vec::new();
+        // Create chunks of keys
         let chunk_size = options.card_count() as usize;
-
-        // Consume pngs directly to save some memory
-        while !cards.is_empty() {
-            let mut chunk = Vec::new();
-            let mut count = 0;
-            while let Some(card) = cards.pop() {
-                chunk.push(card);
-                count += 1;
-                if count == chunk_size {
-                    break;
+        let mut chunks = Vec::new();
+        let mut chunk = Vec::new();
+        for &card in cards {
+            let key = CardKey::from(card);
+            for _ in 0..card.quantity {
+                chunk.push(key);
+                if chunk.len() == chunk_size {
+                    chunks.push(chunk.clone());
+                    chunk.clear();
                 }
             }
-            let png = self.create_page_async(chunk, options).await?;
-            pages.push(png);
         }
-        debug!("pages count: {}", pages.len());
-        debug!(
-            "pages size: {} bytes",
-            pages
-                .iter()
-                .map(|page| page.as_bytes().len())
-                .sum::<usize>()
-        );
-        let pdf = self.create_pdf_async(pages, options).await?;
-        debug!("pdf size: {}", pdf.len());
+        if chunk.len() != 0 {
+            chunks.push(chunk);
+        }
+
+        // Build pages
+        let card_pngs = Arc::new(card_pngs);
+        let page_count = chunks.len();
+        let mut pages = Vec::new();
+        for (i, chunk) in chunks.into_iter().enumerate() {
+            debug!("creating page {}/{}", i + 1, page_count);
+            let page = Printer::create_page(chunk, card_pngs.clone(), options).await?;
+            pages.push(page);
+        }
+        let byte_count = pages.iter().map(|x| x.as_bytes().len()).sum::<usize>();
+        debug!("created {} pages", pages.len());
+        debug!("total size: {}", mb_string(byte_count));
+        drop(card_pngs);
+
+        let pdf = Printer::create_pdf(pages, options).await?;
+        debug!("pdf size: {}", mb_string(pdf.len()));
         Ok(pdf)
     }
 
-    async fn fetch_cards(&self, card_ids: &[Uuid]) -> Result<Vec<Vec<u8>>> {
-        let mut output = Vec::new();
-        for &card_id in card_ids {
-            if let Some(card) = self.cache.get(card_id)? {
-                output.push(card);
-            } else {
-                // Wait at least 50ms between downloads
-                let dl = self.download_card(card_id);
-                let wait = sleep(Duration::from_millis(50));
-                let (a, _) = join!(dl, wait);
-                let png = a?;
-                self.cache.insert(card_id, &png, TTL)?;
-                output.push(png);
+    async fn fetch_cards(cards: &[CardOptions]) -> Result<HashMap<CardKey, Vec<u8>>> {
+        debug!("downloading {} cards", cards.len());
+        let mut output = HashMap::<CardKey, Vec<u8>>::new();
+        for &card in cards {
+            let key = CardKey::from(card);
+            if output.contains_key(&key) {
+                continue;
             }
+
+            // Wait at least 50ms between downloads
+            let dl = Printer::download_card(&card);
+            let wait = sleep(Duration::from_millis(50));
+            let (a, _) = join!(dl, wait);
+            let png = a?;
+            output.insert(key, png.clone());
         }
+        let byte_count = output.iter().map(|(_, png)| png.len()).sum::<usize>();
+        debug!("downloaded {} images", output.len());
+        debug!("total size: {}", mb_string(byte_count));
         Ok(output)
     }
 
-    async fn download_card(&self, card_id: Uuid) -> Result<Vec<u8>> {
-        let url = format!("https://api.scryfall.com/cards/{card_id}?format=image&version=png");
+    async fn download_card(card: &CardOptions) -> Result<Vec<u8>> {
+        let id = card.id;
+        let face = card.face.as_str();
+        let url =
+            format!("https://api.scryfall.com/cards/{id}?format=image&version=png&face={face}");
         let png = reqwest::get(&url)
             .await?
             .bytes()
             .await
-            .context(format!("error downloading {card_id}"))?
+            .context(format!("error downloading card {}", card.id))?
             .to_vec();
         Ok(png)
     }
 
-    async fn create_page_async(
-        &self,
-        pngs: Vec<Vec<u8>>,
-        options: &PrintOptions,
+    async fn create_page(
+        keys: Vec<CardKey>,
+        pngs: Arc<HashMap<CardKey, Vec<u8>>>,
+        options: &PageOptions,
     ) -> Result<DynamicImage> {
-        let pngs = pngs.to_vec();
         let options = options.clone();
-        spawn_blocking(move || Self::create_page(pngs, &options)).await?
+        spawn_blocking(move || Printer::create_page_sync(keys, pngs, &options)).await?
     }
 
-    fn create_page(pngs: Vec<Vec<u8>>, options: &PrintOptions) -> Result<DynamicImage> {
-        debug!("creating page png");
-        let &PrintOptions {
+    fn create_page_sync(
+        keys: Vec<CardKey>,
+        pngs: Arc<HashMap<CardKey, Vec<u8>>>,
+        options: &PageOptions,
+    ) -> Result<DynamicImage> {
+        // Width of a card image in pixels
+        const WIDTH: u32 = 745;
+        // Height of a card image in pixels
+        const HEIGHT: u32 = 1040;
+
+        let &PageOptions {
             rows,
             cols,
             line_len,
@@ -176,7 +208,10 @@ impl Printer {
 
         // Convert images from png
         let mut images = Vec::new();
-        for png in pngs {
+        for key in keys {
+            let Some(png) = pngs.get(&key) else {
+                bail!("pngs missing {}", key.id);
+            };
             let mut buf = RgbaImage::new(WIDTH, HEIGHT);
             let buf_reader = BufReader::new(png.as_slice());
             PngDecoder::new(buf_reader)?
@@ -242,17 +277,12 @@ impl Printer {
         Ok(DynamicImage::from(image.into_rgb8()))
     }
 
-    async fn create_pdf_async(
-        &self,
-        images: Vec<DynamicImage>,
-        options: &PrintOptions,
-    ) -> Result<Vec<u8>> {
-        let images = images.to_vec();
+    async fn create_pdf(images: Vec<DynamicImage>, options: &PageOptions) -> Result<Vec<u8>> {
         let options = options.clone();
-        spawn_blocking(move || Self::create_pdf(images, &options)).await?
+        spawn_blocking(move || Printer::create_pdf_sync(images, &options)).await?
     }
 
-    fn create_pdf(images: Vec<DynamicImage>, options: &PrintOptions) -> Result<Vec<u8>> {
+    fn create_pdf_sync(images: Vec<DynamicImage>, options: &PageOptions) -> Result<Vec<u8>> {
         debug!("creating pdf");
 
         // Set up document
@@ -264,7 +294,8 @@ impl Printer {
         // List of page ids
         let mut page_ids = Vec::<Object>::new();
 
-        for img in images {
+        let image_count = images.len();
+        for (i, img) in images.into_iter().enumerate() {
             // Image stream object
             let (width, height) = img.dimensions();
             let img_dict = dictionary! {
@@ -277,8 +308,8 @@ impl Printer {
             };
             let mut img_stream = Stream::new(img_dict, img.as_bytes().to_vec());
             drop(img);
+            debug!("compressing image stream {}/{}", i + 1, image_count);
             img_stream.compress()?;
-            debug!("compressing image stream");
             let img_id = doc.add_object(img_stream);
 
             // Resources object

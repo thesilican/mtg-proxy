@@ -1,7 +1,9 @@
-use crate::print::{Printer, DEFAULT_OPTIONS};
+use crate::{
+    print::{Printer, DEFAULT_PAGE_OPTIONS},
+    CardOptions,
+};
 use axum::{
     body::Body,
-    extract::State,
     http::{header::CONTENT_TYPE, HeaderValue, Request, StatusCode},
     middleware::Next,
     response::{IntoResponse, Response},
@@ -10,7 +12,6 @@ use axum::{
 use log::{info, warn};
 use serde::Deserialize;
 use std::time::Instant;
-use uuid::Uuid;
 
 /// GET /api/ping
 pub async fn get_ping() -> Response {
@@ -19,12 +20,12 @@ pub async fn get_ping() -> Response {
 
 #[derive(Deserialize)]
 pub struct PostPrintReq {
-    cards: Vec<Uuid>,
+    cards: Vec<CardOptions>,
 }
 
 /// POST /api/print
-pub async fn post_print(State(printer): State<Printer>, Json(req): Json<PostPrintReq>) -> Response {
-    let res = printer.print(&req.cards, &DEFAULT_OPTIONS).await;
+pub async fn post_print(Json(req): Json<PostPrintReq>) -> Response {
+    let res = Printer::print(&req.cards, &DEFAULT_PAGE_OPTIONS).await;
     match res {
         Ok(res) => {
             let mut response = Response::new(Body::from(res));
