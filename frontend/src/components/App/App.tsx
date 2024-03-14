@@ -2,9 +2,9 @@ import cn from "classnames";
 import { defaultTheme } from "../../style/global.css";
 import { CardInput } from "../CardInput/CardInput";
 import { CardPreview } from "../CardPreview/CardPreview";
+import { LocalStorage } from "../LocalStorage/LocalStorage";
 import { Print } from "../Print/Print";
 import { container, title } from "./App.css";
-import { LocalStorage } from "../LocalStorage/LocalStorage";
 
 export function App() {
   return (

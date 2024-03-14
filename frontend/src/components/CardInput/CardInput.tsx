@@ -66,6 +66,10 @@ export function CardInput() {
     }
   };
 
+  const handleClick = (idx: number) => {
+    setActiveIdx(idx);
+  };
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (
@@ -107,6 +111,7 @@ export function CardInput() {
           entries={entries}
           status={autocompleteStatus}
           imageSrc={imageSrc}
+          onClick={handleClick}
         />
       </form>
     </div>
@@ -118,6 +123,7 @@ type AutoCompleteProps = {
   entries: string[];
   activeIdx: number;
   imageSrc: string | undefined;
+  onClick: (idx: number) => void;
 };
 
 export function AutoComplete(props: AutoCompleteProps) {
@@ -134,6 +140,7 @@ export function AutoComplete(props: AutoCompleteProps) {
               key={i}
               className={cn(entry, isActive && active)}
               ref={(e) => isActive && e?.scrollIntoView({ block: "nearest" })}
+              onClick={() => props.onClick(i)}
             >
               {val}
             </span>

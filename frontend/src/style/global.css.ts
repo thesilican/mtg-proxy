@@ -1,4 +1,4 @@
-import { createTheme } from "@vanilla-extract/css";
+import { createTheme, globalStyle } from "@vanilla-extract/css";
 
 export const [defaultTheme, vars] = createTheme({
   white: "#fff",
@@ -16,4 +16,15 @@ export const [defaultTheme, vars] = createTheme({
   blue6: "#0a58ca",
   red5: "#dc3545",
   red6: "#b02a37",
+});
+
+globalStyle("body", {
+  backgroundColor: vars.gray1,
+  backgroundSize: "cover",
+  backgroundAttachment: "fixed",
+  "@media": {
+    "screen and (min-width: 850px)": {
+      backgroundImage: `url(/background.jpg)`,
+    },
+  },
 });

@@ -6,6 +6,7 @@ export const container = style({
   flexWrap: "wrap",
   rowGap: "16px",
   columnGap: "8px",
+  minHeight: "400px",
 });
 
 export const cardStyle = style({
@@ -60,4 +61,5 @@ export const select = style({
   width: "175px",
   borderRadius: "4px",
   border: `1px solid ${vars.gray5}`,
+  backgroundColor: vars.white,
 });

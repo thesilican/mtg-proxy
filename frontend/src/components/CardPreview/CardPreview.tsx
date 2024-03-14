@@ -27,6 +27,7 @@ export function CardPreview() {
       {cards.map((_, i) => (
         <Card key={i} idx={i} />
       ))}
+      {cards.length === 0 && <p>To get started, search for a card to add.</p>}
     </div>
   );
 }

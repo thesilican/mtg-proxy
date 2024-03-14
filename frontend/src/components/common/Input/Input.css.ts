@@ -4,6 +4,7 @@ import { vars } from "../../../style/global.css";
 export const input = style({
   borderRadius: "4px",
   border: `1px solid ${vars.gray5}`,
+  backgroundColor: vars.white,
   outline: "none",
   ":focus-visible": {
     borderColor: vars.blue6,
