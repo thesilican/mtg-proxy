@@ -13,7 +13,7 @@ export const container = style({
       margin: "24px auto",
       borderRadius: "8px",
       boxShadow: "1px 5px 10px 0px rgba(0, 0, 0, 0.5)",
-      backgroundColor: vars.gray1,
+      backgroundColor: vars.white,
     },
   },
   zIndex: 2,

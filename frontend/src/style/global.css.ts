@@ -22,6 +22,7 @@ globalStyle("body", {
   backgroundColor: vars.gray1,
   backgroundSize: "cover",
   backgroundAttachment: "fixed",
+  backgroundPosition: "center",
   "@media": {
     "screen and (min-width: 850px)": {
       backgroundImage: `url(/background.jpg)`,
