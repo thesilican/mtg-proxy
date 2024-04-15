@@ -1,6 +1,6 @@
-.env
-*.pdf
-target/
+.git/
 frontend/dist/
 frontend/node_modules/
-.git/
+wasm/pkg/
+wasm/target/
+*.pdf

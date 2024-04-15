@@ -104,6 +104,7 @@ export function CardInput() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
+          autoFocus
         />
         <Button type="submit">Add</Button>
         <AutoComplete

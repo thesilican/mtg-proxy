@@ -13,6 +13,7 @@ type Props = {
   min?: string | number;
   max?: string | number;
   placeholder?: string;
+  autoFocus?: boolean;
   onChange?: ChangeEventHandler<HTMLInputElement>;
   onKeyDown?: KeyboardEventHandler<HTMLInputElement>;
 };
@@ -26,6 +27,7 @@ export function Input(props: Props) {
       min={props.min}
       max={props.max}
       placeholder={props.placeholder}
+      autoFocus={props.autoFocus}
       onChange={props.onChange}
       onKeyDown={props.onKeyDown}
     />

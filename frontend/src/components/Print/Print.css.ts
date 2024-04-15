@@ -15,4 +15,12 @@ export const separator = style({
   border: "none",
 });
 
-export const printRow = style({});
+export const printRow = style({
+  display: "flex",
+  gap: "8px",
+  alignItems: "center",
+});
+
+export const statusMessage = style({
+  margin: "0px",
+});

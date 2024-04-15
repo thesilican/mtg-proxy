@@ -1,53 +1,67 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAppSelector } from "../../state";
-import { resolveLocalUrl } from "../../util";
 import { Button } from "../common/Button/Button";
-import { container, printRow, separator } from "./Print.css";
+import { container, printRow, separator, statusMessage } from "./Print.css";
+import type { WorkerRequest, WorkerResponse } from "./worker";
+import PrintWorker from "./worker?worker";
 
 export function Print() {
   const cards = useAppSelector((s) => s.print.cards);
-  const [message, setMessage] = useState("Print");
+  const [disabled, setDisabled] = useState(false);
+  const [message, setMessage] = useState("");
+  const workerRef = useRef<Worker>();
+
+  useEffect(() => {
+    const worker = new PrintWorker();
+    workerRef.current = worker;
+    const handler = (event: MessageEvent<WorkerResponse>) => {
+      const message = event.data;
+      if (message.type === "progess") {
+        setMessage(message.message);
+      } else if (message.type === "success") {
+        const pdfUrl = URL.createObjectURL(message.data);
+        const link = document.createElement("a");
+        link.download = "MTG Proxy.pdf";
+        link.href = pdfUrl;
+        link.click();
+        link.remove();
+        setMessage(`Done!`);
+        setDisabled(false);
+      } else if (message.type === "failed") {
+        setDisabled(false);
+      }
+    };
+    worker.addEventListener("message", handler);
+    return () => {
+      worker.removeEventListener("message", handler);
+      worker.terminate();
+    };
+  }, []);
 
   const handleClick = async () => {
-    const cardOptions = cards.map((x) => ({
-      id: x.ids[x.variant],
-      face: x.face === 0 ? "front" : "back",
-      quantity: x.quantity,
-    }));
-    setMessage("Printing...");
-    const result = await fetch(resolveLocalUrl("api/print"), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        cards: cardOptions,
+    const request: WorkerRequest = {
+      type: "print",
+      cards: cards.map((card) => {
+        const id = card.ids[card.variant];
+        const face = card.face === 1 ? "back" : "front";
+        return {
+          count: card.quantity,
+          url: `https://api.scryfall.com/cards/${id}?format=image&version=png&face=${face}`,
+        };
       }),
-    }).catch((err) => {
-      console.error(err);
-      return null;
-    });
-    if (!result || result.status !== 200) {
-      setMessage("Error printing");
-      return;
-    }
-    setMessage("Print");
-    const blob = await result.blob();
-    const pdf = new Blob([blob], { type: "application/pdf" });
-    const pdfUrl = URL.createObjectURL(pdf);
-    const link = document.createElement("a");
-    link.download = "MTG Proxy.pdf";
-    link.href = pdfUrl;
-    link.click();
+    };
+    workerRef.current?.postMessage(request);
+    setDisabled(true);
   };
 
   return (
     <div className={container}>
       <div className={separator} />
       <div className={printRow}>
-        <Button onClick={handleClick} disabled={cards.length === 0}>
-          {message}
+        <Button onClick={handleClick} disabled={cards.length === 0 || disabled}>
+          Print
         </Button>
+        <p className={statusMessage}>{message}</p>
       </div>
     </div>
   );
