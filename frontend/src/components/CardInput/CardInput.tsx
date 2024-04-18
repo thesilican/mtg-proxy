@@ -4,7 +4,7 @@ import { FormEvent, KeyboardEvent, useState } from "react";
 import loadingPng from "../../assets/loading.png";
 import { useAppDispatch } from "../../state";
 import {
-  getDefaultVariantIdx,
+  getDefaultVariant,
   getImageUrl,
   useAutocompleteQuery,
   useCardQuery,
@@ -47,10 +47,13 @@ export function CardInput() {
     activeCardStatus === QueryStatus.fulfilled;
 
   let imageSrc: string | undefined;
-  if (allFulfilled && activeCardData && activeCardData.data.length > 0) {
-    const idx = getDefaultVariantIdx(activeCardData.data);
-    const card = activeCardData.data[idx];
-    imageSrc = getImageUrl(card);
+  if (activeCardData && activeCardData.data.length > 0) {
+    const card = getDefaultVariant(activeCardData.data);
+    if (card.name === activeCardName) {
+      imageSrc = getImageUrl(card);
+    } else {
+      imageSrc = loadingPng;
+    }
   }
 
   const handleKeyDown = (e: KeyboardEvent) => {
@@ -81,15 +84,15 @@ export function CardInput() {
       return;
     }
     setInput("");
+    setActiveIdx(0);
     const name = activeCardName;
-    const ids = activeCardData.data.map((x) => x.id);
+    const id = getDefaultVariant(activeCardData.data).id;
     dispatch(
       printAction.add({
         name,
         quantity: 1,
-        variant: getDefaultVariantIdx(activeCardData.data),
         face: 0,
-        ids,
+        id,
       })
     );
   };
@@ -127,7 +130,7 @@ type AutoCompleteProps = {
   onClick: (idx: number) => void;
 };
 
-export function AutoComplete(props: AutoCompleteProps) {
+function AutoComplete(props: AutoCompleteProps) {
   const isHidden = props.entries.length === 0;
   const imageSrc = props.imageSrc ?? loadingPng;
 

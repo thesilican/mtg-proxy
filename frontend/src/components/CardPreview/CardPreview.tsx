@@ -24,9 +24,16 @@ export function CardPreview() {
   const cards = useAppSelector((state) => state.print.cards);
   return (
     <div className={container}>
-      {cards.map((_, i) => (
-        <Card key={i} idx={i} />
-      ))}
+      {cards.map((card, idx, arr) => {
+        // Count how many names
+        let count = 0;
+        for (let i = 0; i < idx; i++) {
+          if (arr[i].name == card.name) {
+            count++;
+          }
+        }
+        return <Card key={`${card.name}-${count}`} idx={idx} />;
+      })}
       {cards.length === 0 && <p>To get started, search for a card to add.</p>}
     </div>
   );
@@ -41,17 +48,15 @@ function Card(props: CardProps) {
   const card = useAppSelector((state) => state.print.cards)[props.idx];
   const [quantity, setQuantity] = useState(card.quantity?.toString());
 
-  const { data: cardData, status: cardStatus } = useCardQuery(card.name);
+  const { data: cardData, status } = useCardQuery(card.name);
 
-  const variantNames =
-    cardData?.data.map((x) => `${x.set_name} (${x.collector_number})`) ?? [];
-
-  const activeVariant = cardData?.data[card.variant];
-  const isDFC = activeVariant
+  const variants = cardData?.data ?? [];
+  const activeVariant = cardData?.data.find((x) => x.id === card.id);
+  const isDfc = activeVariant
     ? (activeVariant?.card_faces?.length ?? 1) > 1
     : undefined;
   const imgSrc =
-    activeVariant && cardStatus === QueryStatus.fulfilled
+    activeVariant && status === QueryStatus.fulfilled
       ? getImageUrl(activeVariant, card.face)
       : loadingPng;
 
@@ -63,8 +68,14 @@ function Card(props: CardProps) {
   }, [dispatch, props.idx, quantity]);
 
   const handleVariantChange = (e: ChangeEvent<HTMLSelectElement>) => {
-    const variant = parseInt(e.target.value, 10);
-    dispatch(printAction.update({ idx: props.idx, card: { variant } }));
+    dispatch(
+      printAction.update({
+        idx: props.idx,
+        card: {
+          id: e.target.value,
+        },
+      })
+    );
   };
 
   const handleFlip = () => {
@@ -89,7 +100,7 @@ function Card(props: CardProps) {
           onChange={(e) => setQuantity(e.target.value)}
         />
         <div className={spacer} />
-        {isDFC && (
+        {isDfc && (
           <Button
             className={cn("material-symbols-outlined", flip)}
             onClick={handleFlip}
@@ -108,12 +119,12 @@ function Card(props: CardProps) {
       <div className={bottom}>
         <select
           className={select}
-          value={card.variant}
+          value={card.id}
           onChange={handleVariantChange}
         >
-          {variantNames.map((val, i) => (
-            <option key={i} value={i}>
-              {val}
+          {variants.map((card) => (
+            <option key={card.id} value={card.id}>
+              {`${card.set_name} (${card.collector_number})`}
             </option>
           ))}
         </select>

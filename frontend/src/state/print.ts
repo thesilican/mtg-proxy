@@ -1,11 +1,14 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
 export type Card = {
+  /** Scryfall card id */
+  id: string;
+  /** Scryfall card name */
   name: string;
+  /** Quantity of cards */
   quantity: number;
-  variant: number;
+  /** Card face (0 = front, 1 = back) */
   face: number;
-  ids: string[];
 };
 
 export type PrintState = {

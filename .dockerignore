@@ -3,4 +3,6 @@ frontend/dist/
 frontend/node_modules/
 wasm/pkg/
 wasm/target/
+backend/data/
+backend/target/
 *.pdf

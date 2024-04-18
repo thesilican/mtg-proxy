@@ -42,7 +42,7 @@ export function Print() {
     const request: WorkerRequest = {
       type: "print",
       cards: cards.map((card) => {
-        const id = card.ids[card.variant];
+        const id = card.id;
         const face = card.face === 1 ? "back" : "front";
         return {
           count: card.quantity,

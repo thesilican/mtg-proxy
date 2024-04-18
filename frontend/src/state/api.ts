@@ -12,22 +12,18 @@ export type ApiCardResponse = {
 
 export const scryfallApi = createApi({
   reducerPath: "api",
-  baseQuery: fetchBaseQuery({ baseUrl: "https://api.scryfall.com" }),
+  baseQuery: fetchBaseQuery({ baseUrl: "/" }),
   endpoints: (builder) => ({
     autocomplete: builder.query<ApiAutocompleteResponse, string>({
       query: (query) => {
         const q = encodeURIComponent(query);
-        return `/cards/autocomplete?q=${q}&include_extras=true`;
+        return `/api/autocomplete?q=${q}`;
       },
     }),
     card: builder.query<ApiCardResponse, string>({
       query: (name) => {
-        const query = `!${JSON.stringify(name)}`;
-        const q = encodeURIComponent(query);
-        return (
-          `/cards/search?q=${q}` +
-          `&unique=prints&include_multilingual=false&include_extras=true&order=released`
-        );
+        const q = encodeURIComponent(name);
+        return `/api/search?q=${q}`;
       },
     }),
   }),
@@ -35,9 +31,9 @@ export const scryfallApi = createApi({
 
 export const { useAutocompleteQuery, useCardQuery } = scryfallApi;
 
-export function getDefaultVariantIdx(cards: IScryfallCard[]) {
+export function getDefaultVariant(cards: IScryfallCard[]): IScryfallCard {
   // Find the first card that's not promos
-  const candidates: { card: IScryfallCard; idx: number }[] = [];
+  const candidates = [];
   for (let i = 0; i < cards.length; i++) {
     const promo = cards[i].promo;
     const variation = cards[i].variation;
@@ -55,18 +51,17 @@ export function getDefaultVariantIdx(cards: IScryfallCard[]) {
         "art_series",
       ].includes(layout)
     ) {
-      candidates.push({ card: cards[i], idx: i });
+      candidates.push(cards[i]);
     }
   }
 
   if (candidates.length === 0) {
-    return 0;
+    return cards[0];
   }
 
   return candidates.sort(
-    (a, b) =>
-      (a.card.frame_effects?.length ?? 0) - (b.card.frame_effects?.length ?? 0)
-  )[0].idx;
+    (a, b) => (a.frame_effects?.length ?? 0) - (b.frame_effects?.length ?? 0)
+  )[0];
 }
 
 export function getImageUrl(card: IScryfallCard, faceIdx = 0) {
