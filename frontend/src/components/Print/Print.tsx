@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useAppSelector } from "../../state";
 import { Button } from "../common/Button/Button";
-import { container, printRow, separator, statusMessage } from "./Print.css";
+import { container, statusMessage } from "./Print.css";
 import type { WorkerRequest, WorkerResponse } from "./worker";
 import PrintWorker from "./worker?worker";
 
@@ -56,13 +56,10 @@ export function Print() {
 
   return (
     <div className={container}>
-      <div className={separator} />
-      <div className={printRow}>
-        <Button onClick={handleClick} disabled={cards.length === 0 || disabled}>
-          Print
-        </Button>
-        <p className={statusMessage}>{message}</p>
-      </div>
+      <p className={statusMessage}>{message}</p>
+      <Button onClick={handleClick} disabled={cards.length === 0 || disabled}>
+        Print
+      </Button>
     </div>
   );
 }

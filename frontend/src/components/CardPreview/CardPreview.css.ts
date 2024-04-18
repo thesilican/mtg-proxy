@@ -7,6 +7,7 @@ export const container = style({
   rowGap: "16px",
   columnGap: "8px",
   minHeight: "400px",
+  overflow: "auto",
 });
 
 export const cardStyle = style({
@@ -30,22 +31,6 @@ export const number = style({
 
 export const spacer = style({
   flex: "1",
-});
-
-export const flip = style({
-  fontSize: "12px",
-  padding: "0px 6px",
-});
-
-export const remove = style({
-  fontSize: "12px",
-  padding: "0px 6px",
-  backgroundColor: vars.red5,
-  selectors: {
-    "&:active:not(:disabled)": {
-      backgroundColor: vars.red6,
-    },
-  },
 });
 
 export const img = style({

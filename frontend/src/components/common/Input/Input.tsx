@@ -2,9 +2,11 @@ import {
   ChangeEventHandler,
   HTMLInputTypeAttribute,
   KeyboardEventHandler,
+  Ref,
 } from "react";
 import cn from "classnames";
 import { input } from "./Input.css";
+import React from "react";
 
 type Props = {
   className?: string;
@@ -18,9 +20,13 @@ type Props = {
   onKeyDown?: KeyboardEventHandler<HTMLInputElement>;
 };
 
-export function Input(props: Props) {
+export const Input = React.forwardRef(function Input(
+  props: Props,
+  ref?: Ref<HTMLInputElement>
+) {
   return (
     <input
+      ref={ref}
       className={cn(input, props.className)}
       type={props.type}
       value={props.value}
@@ -32,4 +38,4 @@ export function Input(props: Props) {
       onKeyDown={props.onKeyDown}
     />
   );
-}
+});

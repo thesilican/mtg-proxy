@@ -41,6 +41,9 @@ export const printSlice = createSlice({
     load(state, action: PayloadAction<Card[]>) {
       state.cards = action.payload;
     },
+    clear(state) {
+      state.cards = [];
+    },
   },
 });
 

@@ -3,7 +3,18 @@ import { vars } from "../../style/global.css";
 
 export const wrapper = style({
   display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  padding: "16px",
   justifyContent: "center",
+  background: "white",
+  position: "sticky",
+  top: "0px",
+  borderBottom: `1px solid ${vars.gray4}`,
+});
+
+export const title = style({
+  margin: "0px",
 });
 
 export const container = style({
@@ -12,6 +23,7 @@ export const container = style({
   gap: "8px",
   position: "relative",
   maxWidth: "600px",
+  width: "100%",
 });
 
 export const inputField = style({

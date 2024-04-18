@@ -74,7 +74,7 @@ pub async fn get_search(
     let bulk_data = state.lock().await;
     let mut output = Vec::new();
     for card in bulk_data.cards.iter() {
-        if card.name == params.q {
+        if card.name == params.q && !card.promo {
             output.push(card.clone());
         }
     }
@@ -91,17 +91,15 @@ pub async fn get_autocomplete(
     State(state): State<AppState>,
     Query(params): Query<GetAutocompleteRequest>,
 ) -> impl MyResponse {
-    if params.q.len() == 0 {
-        return res_json!({ "data": [] });
-    }
-
     let bulk_data = state.lock().await;
     let mut output = Vec::new();
 
     let search = NormalString::new(&params.q);
-    for name in bulk_data.name_index.iter() {
-        if name.normal.starts_with(&search.normal) {
-            output.push(name.original.clone());
+    if search.normal.len() != 0 {
+        for name in bulk_data.name_index.iter() {
+            if name.normal.starts_with(&search.normal) {
+                output.push(name.original.clone());
+            }
         }
     }
     output.sort();

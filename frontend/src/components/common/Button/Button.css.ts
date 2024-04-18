@@ -19,3 +19,26 @@ export const button = style({
     color: vars.gray4,
   },
 });
+
+export const small = style({
+  fontSize: "12px",
+  padding: "0px 6px",
+});
+
+export const secondary = style({
+  backgroundColor: vars.gray6,
+  selectors: {
+    "&:active:not(:disabled)": {
+      backgroundColor: vars.gray7,
+    },
+  },
+});
+
+export const danger = style({
+  backgroundColor: vars.red5,
+  selectors: {
+    "&:active:not(:disabled)": {
+      backgroundColor: vars.red6,
+    },
+  },
+});

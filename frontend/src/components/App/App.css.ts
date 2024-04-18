@@ -3,7 +3,7 @@ import { vars } from "../../style/global.css";
 
 export const container = style({
   margin: "auto",
-  padding: "40px",
+  padding: "24px 40px",
   maxWidth: "850px",
   display: "flex",
   flexDirection: "column",
@@ -19,7 +19,21 @@ export const container = style({
   zIndex: 2,
 });
 
-export const title = style({
+export const footer = style({
+  display: "flex",
+  position: "sticky",
+  bottom: "0px",
+  gap: "16px",
+  background: "white",
+  padding: "16px 0px",
+  borderTop: `1px solid ${vars.gray4}`,
+  marginTop: "8px",
+});
+
+export const separator = style({
+  flex: "1",
   margin: "0px",
-  textAlign: "center",
+  backgroundColor: vars.gray5,
+  minHeight: "1px",
+  border: "none",
 });

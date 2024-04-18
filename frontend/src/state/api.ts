@@ -29,7 +29,12 @@ export const scryfallApi = createApi({
   }),
 });
 
-export const { useAutocompleteQuery, useCardQuery } = scryfallApi;
+export const {
+  useAutocompleteQuery,
+  useLazyAutocompleteQuery,
+  useCardQuery,
+  useLazyCardQuery,
+} = scryfallApi;
 
 export function getDefaultVariant(cards: IScryfallCard[]): IScryfallCard {
   // Find the first card that's not promos

@@ -42,6 +42,7 @@ pub struct ScryfallCard {
     pub name: String,
     pub image_uris: Option<ScryfallImageUris>,
     pub card_faces: Option<Vec<ScryfallCardFace>>,
+    pub set: String,
     pub set_name: String,
     pub collector_number: String,
     pub promo: bool,

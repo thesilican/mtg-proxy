@@ -1,6 +1,6 @@
 import { QueryStatus } from "@reduxjs/toolkit/query";
 import cn from "classnames";
-import { FormEvent, KeyboardEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import loadingPng from "../../assets/loading.png";
 import { useAppDispatch } from "../../state";
 import {
@@ -20,14 +20,31 @@ import {
   hidden,
   img,
   inputField,
+  title,
   wrapper,
 } from "./CardInput.css";
 import { printAction } from "../../state/print";
 
 export function CardInput() {
   const dispatch = useAppDispatch();
+  const ref = useRef<HTMLInputElement>(null);
   const [input, setInput] = useState("");
   const [activeIdx, setActiveIdx] = useState(0);
+
+  useEffect(() => {
+    if (!ref.current) {
+      return;
+    }
+    const input = ref.current;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "/" && e.target !== input) {
+        input.focus();
+        e.preventDefault();
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, []);
 
   const { data: autocompleteData, status: autocompleteStatus } =
     useAutocompleteQuery(input);
@@ -56,7 +73,7 @@ export function CardInput() {
     }
   }
 
-  const handleKeyDown = (e: KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") {
       e.preventDefault();
       if (entries.length > 0) {
@@ -70,11 +87,15 @@ export function CardInput() {
   };
 
   const handleClick = (idx: number) => {
-    setActiveIdx(idx);
+    if (activeIdx === idx) {
+      handleSubmit();
+    } else {
+      setActiveIdx(idx);
+    }
   };
 
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (e?: FormEvent) => {
+    e?.preventDefault();
     if (
       !allFulfilled ||
       !activeCardData ||
@@ -99,8 +120,10 @@ export function CardInput() {
 
   return (
     <div className={wrapper}>
+      <h1 className={title}>MTG Proxy Maker</h1>
       <form className={container} onSubmit={handleSubmit}>
         <Input
+          ref={ref}
           className={inputField}
           type="text"
           placeholder="Enter a card name"

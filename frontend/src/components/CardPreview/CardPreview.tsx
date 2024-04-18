@@ -1,5 +1,4 @@
 import { QueryStatus } from "@reduxjs/toolkit/query";
-import cn from "classnames";
 import { ChangeEvent, useEffect, useState } from "react";
 import loadingPng from "../../assets/loading.png";
 import { useAppDispatch, useAppSelector } from "../../state";
@@ -11,10 +10,8 @@ import {
   bottom,
   cardStyle,
   container,
-  flip,
   img,
   number,
-  remove,
   select,
   spacer,
   top,
@@ -34,7 +31,11 @@ export function CardPreview() {
         }
         return <Card key={`${card.name}-${count}`} idx={idx} />;
       })}
-      {cards.length === 0 && <p>To get started, search for a card to add.</p>}
+      {cards.length === 0 && (
+        <p>
+          To get started, search for a card to add or import a list of cards.
+        </p>
+      )}
     </div>
   );
 }
@@ -102,14 +103,17 @@ function Card(props: CardProps) {
         <div className={spacer} />
         {isDfc && (
           <Button
-            className={cn("material-symbols-outlined", flip)}
+            size="small"
+            className="material-symbols-outlined"
             onClick={handleFlip}
           >
             flip
           </Button>
         )}
         <Button
-          className={cn("material-symbols-outlined", remove)}
+          variant="danger"
+          size="small"
+          className={"material-symbols-outlined"}
           onClick={handleRemove}
         >
           close
