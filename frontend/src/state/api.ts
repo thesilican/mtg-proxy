@@ -1,18 +1,33 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import { IScryfallCard } from "scryfall-types";
-import errorPng from "../assets/error.png";
 
 export type ApiAutocompleteResponse = {
-  data: string[];
+  names: string[];
+  exact: string[];
+};
+
+export type ImageUris = {
+  large: string;
+  png: string;
+};
+
+export type BackendCard = {
+  id: string;
+  name: string;
+  images: ImageUris[];
+  set: string;
+  set_name: string;
+  collector_number: string;
+  released_at: string;
+  preferred: boolean;
 };
 
 export type ApiCardResponse = {
-  data: IScryfallCard[];
+  cards: BackendCard[];
 };
 
 export const scryfallApi = createApi({
   reducerPath: "api",
-  baseQuery: fetchBaseQuery({ baseUrl: "/" }),
+  baseQuery: fetchBaseQuery({ baseUrl: import.meta.env.BASE_URL }),
   endpoints: (builder) => ({
     autocomplete: builder.query<ApiAutocompleteResponse, string>({
       query: (query) => {
@@ -36,47 +51,11 @@ export const {
   useLazyCardQuery,
 } = scryfallApi;
 
-export function getDefaultVariant(cards: IScryfallCard[]): IScryfallCard {
-  // Find the first card that's not promos
-  const candidates = [];
-  for (let i = 0; i < cards.length; i++) {
-    const promo = cards[i].promo;
-    const variation = cards[i].variation;
-    const layout = cards[i].layout;
-    if (
-      !promo &&
-      !variation &&
-      ![
-        "planar",
-        "scheme",
-        "vanguard",
-        "token",
-        "double_faced_token",
-        "emblem",
-        "art_series",
-      ].includes(layout)
-    ) {
-      candidates.push(cards[i]);
+export function getPreferredCard(cards: BackendCard[]): BackendCard {
+  for (const card of cards) {
+    if (card.preferred) {
+      return card;
     }
   }
-
-  if (candidates.length === 0) {
-    return cards[0];
-  }
-
-  return candidates.sort(
-    (a, b) => (a.frame_effects?.length ?? 0) - (b.frame_effects?.length ?? 0)
-  )[0];
-}
-
-export function getImageUrl(card: IScryfallCard, faceIdx = 0) {
-  if (card.image_uris) {
-    return card.image_uris.large;
-  } else if (card.card_faces) {
-    const face = card.card_faces[faceIdx];
-    if (face && face.image_uris) {
-      return face.image_uris.large;
-    }
-  }
-  return errorPng;
+  return cards[0];
 }

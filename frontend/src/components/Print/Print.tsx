@@ -2,14 +2,22 @@ import { useEffect, useRef, useState } from "react";
 import { useAppSelector } from "../../state";
 import { Button } from "../common/Button/Button";
 import { container, statusMessage } from "./Print.css";
-import type { WorkerRequest, WorkerResponse } from "./worker";
+import type {
+  WorkerRequest,
+  WorkerRequestCard,
+  WorkerResponse,
+} from "./worker";
 import PrintWorker from "./worker?worker";
+import { useLazyCardQuery } from "../../state/api";
+import { QueryStatus } from "@reduxjs/toolkit/query";
 
 export function Print() {
   const cards = useAppSelector((s) => s.print.cards);
   const [disabled, setDisabled] = useState(false);
   const [message, setMessage] = useState("");
   const workerRef = useRef<Worker>();
+
+  const [fetchCards] = useLazyCardQuery();
 
   useEffect(() => {
     const worker = new PrintWorker();
@@ -39,16 +47,25 @@ export function Print() {
   }, []);
 
   const handleClick = async () => {
+    const reqCards: WorkerRequestCard[] = [];
+    for (const card of cards) {
+      const result = await fetchCards(card.name);
+      if (result.status !== QueryStatus.fulfilled) {
+        setMessage("Error fetching card data");
+        return;
+      }
+      for (const cardData of result.data.cards) {
+        if (cardData.id === card.id) {
+          reqCards.push({
+            count: card.quantity,
+            url: cardData.images[card.face].png,
+          });
+        }
+      }
+    }
     const request: WorkerRequest = {
       type: "print",
-      cards: cards.map((card) => {
-        const id = card.id;
-        const face = card.face === 1 ? "back" : "front";
-        return {
-          count: card.quantity,
-          url: `https://api.scryfall.com/cards/${id}?format=image&version=png&face=${face}`,
-        };
-      }),
+      cards: reqCards,
     };
     workerRef.current?.postMessage(request);
     setDisabled(true);

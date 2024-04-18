@@ -9,7 +9,7 @@ import {
 } from "react";
 import { useAppDispatch } from "../../state";
 import {
-  getDefaultVariant,
+  getPreferredCard,
   useLazyAutocompleteQuery,
   useLazyCardQuery,
 } from "../../state/api";
@@ -18,7 +18,7 @@ import { Button } from "../common/Button/Button";
 import { Dialog } from "../common/Dialog/Dialog";
 import { buttonRow, error, textarea } from "./Import.css";
 
-const placeholder = `Import cards in any of the following formats:
+const placeholder = `# Import cards in any of the following formats:
 Treasure Cruise
 Ledger Shredder (SNC)
 Consider (MID) 44
@@ -54,8 +54,11 @@ export function Import() {
       if (line.length === 0) {
         continue;
       }
+      if (line.startsWith("#")) {
+        continue;
+      }
       const match = line.match(
-        /^(\d+\s+)?([ a-zA-Z/,\-']+)(?:\s+\(([a-zA-Z0-9]+)\))?(?:\s+([a-zA-Z-0-9]+))?$/
+        /^(\d+\s+)?([^(]+)(?:\s+\(([a-zA-Z0-9]+)\))?(?:\s+([a-zA-Z-0-9]+))?$/
       );
       if (match === null) {
         errors.push(`Invalid format: ${JSON.stringify(line)}`);
@@ -68,23 +71,19 @@ export function Import() {
       const result = await fetchAutocomplete(name);
       if (
         result.status !== QueryStatus.fulfilled ||
-        !(
-          result.data.data.length === 1 ||
-          result.data.data.find((x) => x === name)
-        )
+        result.data.exact.length === 0
       ) {
         errors.push(`Unknown card: ${JSON.stringify(name)}`);
         continue;
       }
-      const cardName =
-        result.data.data.find((x) => x === name) ?? result.data.data[0];
+      const cardName = result.data.exact[0];
       const cardResult = await fetchCard(cardName);
       if (cardResult.status !== QueryStatus.fulfilled) {
         errors.push(`Unknown card: ${JSON.stringify(name)}`);
         continue;
       }
-      const cardVariants = cardResult.data.data;
-      let preferredCard = getDefaultVariant(cardVariants);
+      const cardVariants = cardResult.data.cards;
+      let preferredCard = getPreferredCard(cardResult.data.cards);
       for (const card of cardVariants) {
         if (
           card.set.toLowerCase() === setName?.toLowerCase() &&

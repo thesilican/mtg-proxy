@@ -12,7 +12,7 @@ Using docker compose:
 docker compose up --build
 ```
 
-Using wasm-pack & npm:
+Using cargo, npm, & wasm-pack:
 
 ```sh
 cd wasm
@@ -21,10 +21,14 @@ wasm-pack build
 cd ../frontend
 npm install
 npm run build
+
+cd ../backend
+cargo run --release
 ```
 
 ## Technologies
 
 - Frontend: React, Redux Toolkit, Vite
+- Backend: Rust, axum, reqwest
 - Wasm: Rust, imageproc, lopdf, wasm-pack
 - External API: [Scryfall](https://scryfall.com/docs/api)

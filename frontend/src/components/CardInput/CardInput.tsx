@@ -4,11 +4,11 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import loadingPng from "../../assets/loading.png";
 import { useAppDispatch } from "../../state";
 import {
-  getDefaultVariant,
-  getImageUrl,
+  getPreferredCard,
   useAutocompleteQuery,
   useCardQuery,
 } from "../../state/api";
+import { printAction } from "../../state/print";
 import { Button } from "../common/Button/Button";
 import { Input } from "../common/Input/Input";
 import {
@@ -23,7 +23,6 @@ import {
   title,
   wrapper,
 } from "./CardInput.css";
-import { printAction } from "../../state/print";
 
 export function CardInput() {
   const dispatch = useAppDispatch();
@@ -37,7 +36,7 @@ export function CardInput() {
     }
     const input = ref.current;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "/" && e.target !== input) {
+      if (e.key === "/" && e.target === document.body) {
         input.focus();
         e.preventDefault();
       }
@@ -49,13 +48,13 @@ export function CardInput() {
   const { data: autocompleteData, status: autocompleteStatus } =
     useAutocompleteQuery(input);
 
-  const entries = autocompleteData?.data ?? [];
-  const activeCardName = entries[activeIdx] as string | undefined;
+  const autocompleteNames = autocompleteData?.names ?? [];
+  const activeName = autocompleteNames[activeIdx] as string | undefined;
 
   const { data: activeCardData, status: activeCardStatus } = useCardQuery(
-    activeCardName ?? "",
+    activeName ?? "",
     {
-      skip: activeCardName === undefined,
+      skip: activeName === undefined,
     }
   );
 
@@ -64,10 +63,10 @@ export function CardInput() {
     activeCardStatus === QueryStatus.fulfilled;
 
   let imageSrc: string | undefined;
-  if (activeCardData && activeCardData.data.length > 0) {
-    const card = getDefaultVariant(activeCardData.data);
-    if (card.name === activeCardName) {
-      imageSrc = getImageUrl(card);
+  if (activeCardData && activeCardData.cards.length > 0) {
+    const card = getPreferredCard(activeCardData.cards);
+    if (card.name === activeName) {
+      imageSrc = card.images[0].large;
     } else {
       imageSrc = loadingPng;
     }
@@ -76,12 +75,14 @@ export function CardInput() {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      if (entries.length > 0) {
-        setActiveIdx((activeIdx + 1) % entries.length);
+      if (autocompleteNames.length > 0) {
+        setActiveIdx((activeIdx + 1) % autocompleteNames.length);
       }
     } else if (e.key === "ArrowUp") {
-      if (entries.length > 0) {
-        setActiveIdx((activeIdx + entries.length - 1) % entries.length);
+      if (autocompleteNames.length > 0) {
+        setActiveIdx(
+          (activeIdx + autocompleteNames.length - 1) % autocompleteNames.length
+        );
       }
     }
   };
@@ -99,15 +100,15 @@ export function CardInput() {
     if (
       !allFulfilled ||
       !activeCardData ||
-      activeCardData.data.length === 0 ||
-      !activeCardName
+      activeCardData.cards.length === 0 ||
+      !activeName
     ) {
       return;
     }
     setInput("");
     setActiveIdx(0);
-    const name = activeCardName;
-    const id = getDefaultVariant(activeCardData.data).id;
+    const name = activeName;
+    const id = getPreferredCard(activeCardData.cards).id;
     dispatch(
       printAction.add({
         name,
@@ -135,7 +136,7 @@ export function CardInput() {
         <Button type="submit">Add</Button>
         <AutoComplete
           activeIdx={activeIdx}
-          entries={entries}
+          entries={autocompleteNames}
           status={autocompleteStatus}
           imageSrc={imageSrc}
           onClick={handleClick}

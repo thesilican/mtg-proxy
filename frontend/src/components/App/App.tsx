@@ -8,6 +8,7 @@ import { LocalStorage } from "../LocalStorage/LocalStorage";
 import { Print } from "../Print/Print";
 import { container, footer } from "./App.css";
 import { Export } from "../Export/Export";
+import { Counter } from "../Counter/Counter";
 
 export function App() {
   return (
@@ -18,6 +19,7 @@ export function App() {
         <Import />
         <Export />
         <Clear />
+        <Counter />
         <Print />
       </div>
       <LocalStorage />

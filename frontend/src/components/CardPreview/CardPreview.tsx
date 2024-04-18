@@ -2,7 +2,7 @@ import { QueryStatus } from "@reduxjs/toolkit/query";
 import { ChangeEvent, useEffect, useState } from "react";
 import loadingPng from "../../assets/loading.png";
 import { useAppDispatch, useAppSelector } from "../../state";
-import { getImageUrl, useCardQuery } from "../../state/api";
+import { useCardQuery } from "../../state/api";
 import { printAction } from "../../state/print";
 import { Button } from "../common/Button/Button";
 import { Input } from "../common/Input/Input";
@@ -51,14 +51,12 @@ function Card(props: CardProps) {
 
   const { data: cardData, status } = useCardQuery(card.name);
 
-  const variants = cardData?.data ?? [];
-  const activeVariant = cardData?.data.find((x) => x.id === card.id);
-  const isDfc = activeVariant
-    ? (activeVariant?.card_faces?.length ?? 1) > 1
-    : undefined;
+  const variants = cardData?.cards ?? [];
+  const activeVariant = cardData?.cards.find((x) => x.id === card.id);
+  const isDfc = activeVariant ? activeVariant.images.length > 1 : undefined;
   const imgSrc =
     activeVariant && status === QueryStatus.fulfilled
-      ? getImageUrl(activeVariant, card.face)
+      ? activeVariant.images[card.face].large
       : loadingPng;
 
   useEffect(() => {

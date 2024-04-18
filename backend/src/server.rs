@@ -8,11 +8,11 @@ use axum::{
 use log::warn;
 use reqwest::StatusCode;
 use serde::Deserialize;
-use std::{cmp::Reverse, sync::Arc};
+use std::sync::Arc;
 use tokio::sync::{Mutex, MutexGuard};
 use tower_http::services::ServeDir;
 
-use crate::bulk_data::{BulkData, NormalString};
+use crate::bulk_data::{BulkData, NormalName};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -74,12 +74,11 @@ pub async fn get_search(
     let bulk_data = state.lock().await;
     let mut output = Vec::new();
     for card in bulk_data.cards.iter() {
-        if card.name == params.q && !card.promo {
+        if card.name == params.q {
             output.push(card.clone());
         }
     }
-    output.sort_by_key(|card| Reverse(card.released_at));
-    res_json!({ "data": output })
+    res_json!({ "cards": output })
 }
 
 #[derive(Deserialize)]
@@ -91,20 +90,32 @@ pub async fn get_autocomplete(
     State(state): State<AppState>,
     Query(params): Query<GetAutocompleteRequest>,
 ) -> impl MyResponse {
-    let bulk_data = state.lock().await;
-    let mut output = Vec::new();
+    let search = NormalName::new(&params.q);
+    if search.normal.len() == 0 {
+        return res_json!({ "names": [] });
+    }
 
-    let search = NormalString::new(&params.q);
-    if search.normal.len() != 0 {
-        for name in bulk_data.name_index.iter() {
-            if name.normal.starts_with(&search.normal) {
-                output.push(name.original.clone());
-            }
+    // Find exact matches
+    let mut exact = Vec::new();
+    let bulk_data = state.lock().await;
+    for name in &bulk_data.name_index {
+        if name.normal == search.normal
+            || name.normal_front.as_ref() == Some(&search.normal)
+            || name.normal_back.as_ref() == Some(&search.normal)
+        {
+            exact.push(name.original.clone());
         }
     }
-    output.sort();
 
-    res_json!({ "data": output })
+    // Find starts with matches
+    let mut output = Vec::new();
+    for name in bulk_data.name_index.iter() {
+        if name.normal.starts_with(&search.normal) {
+            output.push(name.original.clone());
+        }
+    }
+
+    res_json!({ "names": output, "exact": exact })
 }
 
 pub fn build_router(app_state: AppState, public_dir: &str) -> Router {
