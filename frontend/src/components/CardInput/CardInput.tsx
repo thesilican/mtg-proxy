@@ -20,6 +20,7 @@ import {
   hidden,
   img,
   inputField,
+  subtitle,
   title,
   wrapper,
 } from "./CardInput.css";
@@ -122,6 +123,9 @@ export function CardInput() {
   return (
     <div className={wrapper}>
       <h1 className={title}>MTG Proxy Maker</h1>
+      <p className={subtitle}>
+        By <a href="https://thesilican.com">Bryan Chen</a>
+      </p>
       <form className={container} onSubmit={handleSubmit}>
         <Input
           ref={ref}
