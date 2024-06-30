@@ -53,11 +53,9 @@ async fn update_loop(app_state: AppState, cancel_token: CancellationToken) {
             info!("Refreshing card database");
             if let Err(err) = bulk_data.fetch().await {
                 error!("Error fetching bulk data: {err}");
-                cancel_token.cancel();
             }
             if let Err(err) = bulk_data.save_to_file().await {
                 error!("Error saving bulk data to file: {err}");
-                cancel_token.cancel();
             }
         }
         drop(bulk_data);
