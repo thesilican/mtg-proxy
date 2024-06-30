@@ -11,6 +11,7 @@ export const wrapper = style({
   position: "sticky",
   top: "0px",
   borderBottom: `1px solid ${vars.gray4}`,
+  zIndex: 1,
 });
 
 export const title = style({

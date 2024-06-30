@@ -28,6 +28,7 @@ export const footer = style({
   padding: "16px 0px",
   borderTop: `1px solid ${vars.gray4}`,
   marginTop: "8px",
+  zIndex: 1,
 });
 
 export const separator = style({
