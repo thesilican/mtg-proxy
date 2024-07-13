@@ -1,4 +1,4 @@
-FROM rust:1.76 as wasm
+FROM rust:1.76 AS wasm
 
 WORKDIR /root/wasm
 RUN rustup update && \
@@ -12,7 +12,7 @@ RUN mkdir -p src/ && \
 COPY wasm/ ./
 RUN touch src/lib.rs && wasm-pack build
 
-FROM node:lts as frontend
+FROM node:lts AS frontend
 
 WORKDIR /root/frontend
 ARG BASE_URL /
@@ -22,7 +22,7 @@ RUN npm ci
 COPY frontend/ ./
 RUN npm run build
 
-FROM rust:1.76 as backend
+FROM rust:1.76 AS backend
 
 WORKDIR /root/backend
 COPY backend/Cargo.* ./
