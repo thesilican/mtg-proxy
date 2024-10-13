@@ -5,15 +5,13 @@ export type ApiAutocompleteResponse = {
   exact: string[];
 };
 
-export type ImageUris = {
-  large: string;
-  png: string;
-};
-
 export type BackendCard = {
   id: string;
   name: string;
-  images: ImageUris[];
+  image_front_large: string;
+  image_front_png: string;
+  image_back_large: string | null;
+  image_back_png: string | null;
   set: string;
   set_name: string;
   collector_number: string;

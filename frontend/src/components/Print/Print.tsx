@@ -56,10 +56,11 @@ export function Print() {
       }
       for (const cardData of result.data.cards) {
         if (cardData.id === card.id) {
-          reqCards.push({
-            count: card.quantity,
-            url: cardData.images[card.face].png,
-          });
+          const url =
+            card.face === 0
+              ? cardData.image_front_png
+              : cardData.image_back_png!;
+          reqCards.push({ count: card.quantity, url });
         }
       }
     }

@@ -1,10 +1,11 @@
-mod bulk_data;
+mod database;
+mod downloader;
 mod server;
 
-use anyhow::{bail, Result};
-use bulk_data::BulkData;
-use chrono::Utc;
-use log::{error, info, warn};
+use anyhow::{bail, Context, Result};
+use database::Database;
+use downloader::Downloader;
+use log::{info, warn};
 use server::AppState;
 use std::{
     env,
@@ -31,34 +32,16 @@ async fn handle_ctrl_c(cancel_token: CancellationToken) {
     cancel_token.cancel();
 }
 
-async fn load_bulk_data() -> Result<BulkData> {
-    let mut bulk_data = BulkData::new();
-    if let Err(err) = bulk_data.load_from_file().await {
-        warn!("Error loading bulk data from file: {err}");
-        bulk_data.fetch().await?;
-        bulk_data.save_to_file().await?;
-    }
-    Ok(bulk_data)
-}
-
 async fn update_loop(app_state: AppState, cancel_token: CancellationToken) {
-    const SLEEP_DURATION: Duration = Duration::from_secs(60);
+    const SLEEP_DURATION: Duration = Duration::from_secs(60 * 60 * 24 * 7);
     loop {
-        // Check if the cards are out of date
-        let mut bulk_data = app_state.lock().await;
-        let now = Utc::now();
-        if (now - bulk_data.last_fetched).num_days() >= 7
-            && (now - bulk_data.updated_at).num_days() >= 7
-        {
-            info!("Refreshing card database");
-            if let Err(err) = bulk_data.fetch().await {
-                error!("Error fetching bulk data: {err}");
-            }
-            if let Err(err) = bulk_data.save_to_file().await {
-                error!("Error saving bulk data to file: {err}");
-            }
+        let result = app_state
+            .downloader
+            .refresh_database(app_state.database.clone())
+            .await;
+        if let Err(err) = result {
+            warn!("failed to refresh card database: {err}");
         }
-        drop(bulk_data);
 
         select! {
             _ = cancel_token.cancelled() => { break; }
@@ -76,11 +59,16 @@ async fn main() -> Result<()> {
         .parse_default_env()
         .init();
 
-    let port = env::var("PORT").unwrap_or(String::from("8080")).parse()?;
-    let public_dir = env::var("PUBLIC_DIR").unwrap_or(String::from("../frontend/dist"));
+    let port = env::var("PORT").unwrap_or("8080".to_string()).parse()?;
+    let public_dir = env::var("PUBLIC_DIR").unwrap_or("../frontend/dist".to_string());
+    let database_file = env::var("DATABASE_FILE").unwrap_or("./data/database.db".to_string());
 
-    let bulk_data = load_bulk_data().await?;
-    let app_state = AppState::new(bulk_data);
+    let downloader = Downloader::new().context("failed to create downloader")?;
+    let database = Database::open(&database_file)
+        .await
+        .context("failed to open database")?;
+    database.init().await.context("failed to init database")?;
+    let app_state = AppState::new(downloader, database);
 
     let cancel_token = CancellationToken::new();
     tokio::spawn(handle_ctrl_c(cancel_token.clone()));

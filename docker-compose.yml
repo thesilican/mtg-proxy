@@ -1,10 +1,9 @@
-version: "3"
 services:
   mtg-proxy:
     build: .
     ports:
       - 8080:8080
     volumes:
-      - mtg-proxy:/root/data
+      - mtg-proxy:/app/data
 volumes:
   mtg-proxy:

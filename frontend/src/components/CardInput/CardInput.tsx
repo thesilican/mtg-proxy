@@ -67,7 +67,7 @@ export function CardInput() {
   if (activeCardData && activeCardData.cards.length > 0) {
     const card = getPreferredCard(activeCardData.cards);
     if (card.name === activeName) {
-      imageSrc = card.images[0].large;
+      imageSrc = card.image_front_large;
     } else {
       imageSrc = loadingPng;
     }

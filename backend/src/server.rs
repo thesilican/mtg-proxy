@@ -8,26 +8,26 @@ use axum::{
 use log::warn;
 use reqwest::StatusCode;
 use serde::Deserialize;
-use std::sync::Arc;
-use tokio::sync::{Mutex, MutexGuard};
+use std::{cmp::Reverse, collections::BTreeSet, sync::Arc};
 use tower_http::services::ServeDir;
 
-use crate::bulk_data::{BulkData, NormalName};
+use crate::{
+    database::{Database, NormalName},
+    downloader::Downloader,
+};
 
 #[derive(Clone)]
 pub struct AppState {
-    bulk_data: Arc<Mutex<BulkData>>,
+    pub downloader: Arc<Downloader>,
+    pub database: Arc<Database>,
 }
 
 impl AppState {
-    pub fn new(bulk_data: BulkData) -> Self {
+    pub fn new(downloader: Downloader, database: Database) -> Self {
         AppState {
-            bulk_data: Arc::new(Mutex::new(bulk_data)),
+            downloader: Arc::new(downloader),
+            database: Arc::new(database),
         }
-    }
-
-    pub async fn lock(&self) -> MutexGuard<'_, BulkData> {
-        self.bulk_data.lock().await
     }
 }
 
@@ -62,23 +62,28 @@ macro_rules! res_json {
     };
 }
 
+/// Check if the API is working
+pub async fn get_ping() -> impl MyResponse {
+    Ok("pong!")
+}
+
 #[derive(Deserialize)]
 pub struct GetSearchRequest {
     q: String,
 }
 
+/// Get cards by exact card name
 pub async fn get_search(
     State(state): State<AppState>,
     Query(params): Query<GetSearchRequest>,
 ) -> impl MyResponse {
-    let bulk_data = state.lock().await;
-    let mut output = Vec::new();
-    for card in bulk_data.cards.iter() {
-        if card.name == params.q {
-            output.push(card.clone());
-        }
-    }
-    res_json!({ "cards": output })
+    let mut cards = state
+        .database
+        .get_cards_by_name(&params.q)
+        .await
+        .server_err()?;
+    cards.sort_by_key(|card| Reverse(card.released_at));
+    res_json!({ "cards": cards })
 }
 
 #[derive(Deserialize)]
@@ -86,34 +91,36 @@ pub struct GetAutocompleteRequest {
     q: String,
 }
 
+/// Get card names given a search term
 pub async fn get_autocomplete(
     State(state): State<AppState>,
     Query(params): Query<GetAutocompleteRequest>,
 ) -> impl MyResponse {
-    let search = NormalName::new(&params.q);
-    if search.normal.len() == 0 {
-        return res_json!({ "names": [] });
+    const MAX_RESPONSE_LEN: usize = 200;
+    if params.q.len() == 0 {
+        return res_json!({ "names": [], "exact": [] });
     }
-
-    // Find exact matches
-    let mut exact = Vec::new();
-    let bulk_data = state.lock().await;
-    for name in &bulk_data.name_index {
-        if name.normal == search.normal
-            || name.normal_front.as_ref() == Some(&search.normal)
-            || name.normal_back.as_ref() == Some(&search.normal)
-        {
-            exact.push(name.original.clone());
+    let search = Database::normalize_string(&params.q);
+    let normal_names = state.database.get_normal_name(&search).await.server_err()?;
+    let mut output_set = BTreeSet::<String>::new();
+    let mut exact_set = BTreeSet::<String>::new();
+    for NormalName {
+        name,
+        normal_front,
+        normal_back,
+    } in normal_names
+    {
+        output_set.insert(name.clone());
+        if search == normal_front {
+            exact_set.insert(name.clone());
+        } else if let Some(back) = normal_back {
+            if search == back {
+                exact_set.insert(name.clone());
+            }
         }
     }
-
-    // Find starts with matches
-    let mut output = Vec::new();
-    for name in bulk_data.name_index.iter() {
-        if name.normal.starts_with(&search.normal) {
-            output.push(name.original.clone());
-        }
-    }
+    let output: Vec<String> = output_set.into_iter().take(MAX_RESPONSE_LEN).collect();
+    let exact: Vec<String> = exact_set.into_iter().take(MAX_RESPONSE_LEN).collect();
 
     res_json!({ "names": output, "exact": exact })
 }
@@ -122,6 +129,7 @@ pub fn build_router(app_state: AppState, public_dir: &str) -> Router {
     let serve_dir = ServeDir::new(public_dir);
 
     Router::new()
+        .route("/api/ping", get(get_ping))
         .route("/api/autocomplete", get(get_autocomplete))
         .route("/api/search", get(get_search))
         .with_state(app_state)

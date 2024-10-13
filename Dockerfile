@@ -1,6 +1,6 @@
-FROM rust:1.76 AS wasm
+FROM rust:1.81 AS wasm
 
-WORKDIR /root/wasm
+WORKDIR /app/wasm
 RUN rustup update && \
     rustup target add wasm32-unknown-unknown && \
     cargo install wasm-pack
@@ -14,17 +14,17 @@ RUN touch src/lib.rs && wasm-pack build
 
 FROM node:lts AS frontend
 
-WORKDIR /root/frontend
+WORKDIR /app/frontend
 ARG BASE_URL /
 COPY frontend/package*.json ./
-COPY --from=wasm /root/wasm/pkg /root/wasm/pkg
+COPY --from=wasm /app/wasm/pkg /app/wasm/pkg
 RUN npm ci
 COPY frontend/ ./
 RUN npm run build
 
-FROM rust:1.76 AS backend
+FROM rust:1.81 AS backend
 
-WORKDIR /root/backend
+WORKDIR /app/backend
 COPY backend/Cargo.* ./
 RUN mkdir -p src/ && \
     echo "fn main() {}" > src/main.rs && \
@@ -35,14 +35,15 @@ RUN touch src/main.rs && cargo build --release
 
 FROM debian
 
-WORKDIR /root
+WORKDIR /app
 RUN apt-get update && apt-get -y install openssl ca-certificates
-COPY --from=backend /root/backend/target/release/backend /root
-COPY --from=frontend /root/frontend/dist /root/public
+COPY --from=backend /app/backend/target/release/backend /app
+COPY --from=frontend /app/frontend/dist /app/public
 
 ENV PUBLIC_DIR ./public
 ENV PORT 8080
+ENV DATABASE_FILE /app/data/database.db
 EXPOSE 8080
-VOLUME [ "/root/data" ]
+VOLUME [ "/app/data" ]
 
-CMD ["/root/backend"]
+CMD ["/app/backend"]

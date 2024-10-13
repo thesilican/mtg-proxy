@@ -53,10 +53,12 @@ function Card(props: CardProps) {
 
   const variants = cardData?.cards ?? [];
   const activeVariant = cardData?.cards.find((x) => x.id === card.id);
-  const isDfc = activeVariant ? activeVariant.images.length > 1 : undefined;
+  const isDfc = activeVariant ? !!activeVariant.image_back_png : undefined;
   const imgSrc =
     activeVariant && status === QueryStatus.fulfilled
-      ? activeVariant.images[card.face].large
+      ? card.face === 0
+        ? activeVariant.image_front_large
+        : activeVariant.image_back_large!
       : loadingPng;
 
   useEffect(() => {
