@@ -172,15 +172,27 @@ impl Database {
         Ok(())
     }
 
-    pub async fn get_normal_name(&self, search: &str) -> Result<Vec<NormalName>> {
-        let results: Vec<NormalName> = sqlx::query_as(
+    pub async fn get_normal_name(&self, search: &NormalName) -> Result<Vec<NormalName>> {
+        let mut results = Vec::<NormalName>::new();
+        let front: Vec<NormalName> = sqlx::query_as(
             "SELECT * FROM normal_names
                 WHERE normal_front LIKE $1 || '%'
                     OR normal_back LIKE $1 || '%'",
         )
-        .bind(search)
+        .bind(&search.normal_front)
         .fetch_all(&self.pool)
         .await?;
+        results.extend(front);
+        if let Some(search_back) = &search.normal_back {
+            let back = sqlx::query_as(
+                "SELECT * FROM normal_names
+                    WHERE normal_back LIKE $1 || '%'",
+            )
+            .bind(search_back)
+            .fetch_all(&self.pool)
+            .await?;
+            results.extend(back);
+        }
         Ok(results)
     }
 
@@ -219,7 +231,7 @@ impl Database {
         let normal_front = Database::normalize_string(splits.next().unwrap());
         let normal_back = splits.next().map(Database::normalize_string);
         NormalName {
-            name: name.to_string(),
+            name: name.trim().to_string(),
             normal_front,
             normal_back,
         }

@@ -11,10 +11,7 @@ use serde::Deserialize;
 use std::{cmp::Reverse, collections::BTreeSet, sync::Arc};
 use tower_http::services::ServeDir;
 
-use crate::{
-    database::{Database, NormalName},
-    downloader::Downloader,
-};
+use crate::{database::Database, downloader::Downloader};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -100,23 +97,14 @@ pub async fn get_autocomplete(
     if params.q.len() == 0 {
         return res_json!({ "names": [], "exact": [] });
     }
-    let search = Database::normalize_string(&params.q);
-    let normal_names = state.database.get_normal_name(&search).await.server_err()?;
+    let search = Database::normalize_name(&params.q);
+    let results = state.database.get_normal_name(&search).await.server_err()?;
     let mut output_set = BTreeSet::<String>::new();
     let mut exact_set = BTreeSet::<String>::new();
-    for NormalName {
-        name,
-        normal_front,
-        normal_back,
-    } in normal_names
-    {
-        output_set.insert(name.clone());
-        if search == normal_front {
-            exact_set.insert(name.clone());
-        } else if let Some(back) = normal_back {
-            if search == back {
-                exact_set.insert(name.clone());
-            }
+    for result in results {
+        output_set.insert(result.name.clone());
+        if search.name == result.name {
+            exact_set.insert(result.name.clone());
         }
     }
     let output: Vec<String> = output_set.into_iter().take(MAX_RESPONSE_LEN).collect();

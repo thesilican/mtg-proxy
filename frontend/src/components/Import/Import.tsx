@@ -73,7 +73,11 @@ export function Import() {
         result.status !== QueryStatus.fulfilled ||
         result.data.exact.length === 0
       ) {
-        errors.push(`Unknown card: ${JSON.stringify(name)}`);
+        let error = `Unknown card: ${JSON.stringify(name)}`;
+        if (result.data && result.data.names.length > 0) {
+          error += ` (did you mean '${result.data.names[0]}'?)`;
+        }
+        errors.push(error);
         continue;
       }
       const cardName = result.data.exact[0];
