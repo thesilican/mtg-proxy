@@ -12,6 +12,7 @@ import {
   container,
   img,
   number,
+  placeholder,
   select,
   spacer,
   top,
@@ -32,7 +33,7 @@ export function CardPreview() {
         return <Card key={`${card.name}-${count}`} idx={idx} />;
       })}
       {cards.length === 0 && (
-        <p>
+        <p className={placeholder}>
           To get started, search for a card to add or import a list of cards.
         </p>
       )}

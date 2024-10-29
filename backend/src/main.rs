@@ -33,7 +33,7 @@ async fn handle_ctrl_c(cancel_token: CancellationToken) {
 }
 
 async fn update_loop(app_state: AppState, cancel_token: CancellationToken) {
-    const SLEEP_DURATION: Duration = Duration::from_secs(60 * 60 * 24 * 7);
+    const SLEEP_DURATION: Duration = Duration::from_secs(60);
     loop {
         let result = app_state
             .downloader

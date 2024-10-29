@@ -1,6 +1,6 @@
 use crate::database::{Card, Database, Metadata};
 use anyhow::{bail, Context, Result};
-use chrono::{DateTime, NaiveDate, Utc};
+use chrono::{DateTime, Duration, NaiveDate, Utc};
 use log::info;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -179,20 +179,24 @@ impl Downloader {
     }
 
     pub async fn refresh_database(&self, database: Arc<Database>) -> Result<()> {
+        const REFRESH_DURATION: Duration = Duration::days(7);
         let now = Utc::now();
-        let metadata = database.get_metadata().await?;
-        let index = self.fetch_bulk_data_index().await?;
-        let last_updated = metadata.last_updated.unwrap_or(DateTime::UNIX_EPOCH);
-        if last_updated < index.updated_at {
+        let last_updated = database
+            .get_metadata()
+            .await?
+            .last_updated
+            .unwrap_or(DateTime::UNIX_EPOCH);
+        if now - last_updated > REFRESH_DURATION {
+            let index = self.fetch_bulk_data_index().await?;
             let (cards, preferred_ids) = self.fetch(&index).await?;
             self.populate_database(cards, preferred_ids, database.clone())
                 .await?;
+            database
+                .set_metadata(Metadata {
+                    last_updated: Some(now),
+                })
+                .await?;
         }
-        database
-            .set_metadata(Metadata {
-                last_updated: Some(now),
-            })
-            .await?;
         Ok(())
     }
 }

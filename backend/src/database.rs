@@ -71,6 +71,8 @@ impl Database {
                 released_at TEXT,
                 preferred INTEGER
             )",
+            "CREATE INDEX IF NOT EXISTS cards_name_index
+                ON cards (name)",
             "CREATE TABLE IF NOT EXISTS normal_names (
                 name TEXT PRIMARY KEY,
                 normal_front TEXT,
@@ -214,7 +216,7 @@ impl Database {
     pub fn normalize_string(text: &str) -> String {
         let mut normalized = String::new();
         let mut last_char_space = false;
-        for char in text.nfd() {
+        for char in text.chars() {
             if char.is_ascii_alphanumeric() {
                 normalized.push(char.to_ascii_lowercase());
                 last_char_space = false;
@@ -227,11 +229,12 @@ impl Database {
     }
 
     pub fn normalize_name(name: &str) -> NormalName {
+        let name = name.trim().nfd().to_string();
         let mut splits = name.split(" // ");
         let normal_front = Database::normalize_string(splits.next().unwrap());
         let normal_back = splits.next().map(Database::normalize_string);
         NormalName {
-            name: name.trim().to_string(),
+            name,
             normal_front,
             normal_back,
         }

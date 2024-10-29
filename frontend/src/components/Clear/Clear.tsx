@@ -22,7 +22,7 @@ export function Clear() {
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
       >
-        <p className={message}>Delete all cards?</p>
+        <p className={message}>Remove all cards?</p>
         <div className={buttonRow}>
           <Button variant="danger" onClick={handleClick}>
             Clear

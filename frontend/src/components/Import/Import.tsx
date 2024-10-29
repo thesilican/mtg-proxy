@@ -16,7 +16,7 @@ import {
 import { printAction } from "../../state/print";
 import { Button } from "../common/Button/Button";
 import { Dialog } from "../common/Dialog/Dialog";
-import { buttonRow, error, textarea } from "./Import.css";
+import { buttonRow, error, statusText, textarea } from "./Import.css";
 
 const placeholder = `# Import cards in any of the following formats:
 Treasure Cruise
@@ -32,6 +32,7 @@ export function Import() {
   const [processing, setProcessing] = useState(false);
   const [text, setText] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
+  const [status, setStatus] = useState("");
   const ref = useRef<HTMLTextAreaElement>(null);
 
   const [fetchAutocomplete] = useLazyAutocompleteQuery();
@@ -46,6 +47,7 @@ export function Import() {
 
   const handleImport = useCallback(async () => {
     setProcessing(true);
+    setErrors([]);
     const lines = text.split("\n");
     const errors = [];
     const cards = [];
@@ -58,7 +60,7 @@ export function Import() {
         continue;
       }
       const match = line.match(
-        /^(\d+\s+)?([^(]+)(?:\s+\(([a-zA-Z0-9]+)\))?(?:\s+([a-zA-Z-0-9]+))?$/
+        /^(\d+\s+)?([^(]+)(?:\s+\(([a-zA-Z0-9]+)\))?(?:\s+([a-zA-Z-0-9]+))?$/,
       );
       if (match === null) {
         errors.push(`Invalid format: ${JSON.stringify(line)}`);
@@ -68,7 +70,13 @@ export function Import() {
       const name = match[2].trim();
       const setName = match[3];
       const collectorsNumber = match[4];
-      const result = await fetchAutocomplete(name);
+      let result;
+      try {
+        result = await fetchAutocomplete(name);
+      } catch {
+        errors.push(`Network error fetching ${JSON.stringify(name)}`);
+        continue;
+      }
       if (
         result.status !== QueryStatus.fulfilled ||
         result.data.exact.length === 0
@@ -81,7 +89,14 @@ export function Import() {
         continue;
       }
       const cardName = result.data.exact[0];
-      const cardResult = await fetchCard(cardName);
+      setStatus(`Fetching cards (${i + 1} / ${lines.length})`);
+      let cardResult;
+      try {
+        cardResult = await fetchCard(cardName);
+      } catch {
+        errors.push(`Network error fetching ${JSON.stringify(name)}`);
+        continue;
+      }
       if (cardResult.status !== QueryStatus.fulfilled) {
         errors.push(`Unknown card: ${JSON.stringify(name)}`);
         continue;
@@ -98,9 +113,10 @@ export function Import() {
       }
       cards.push({ count, card: preferredCard });
     }
+    setStatus("");
+    setProcessing(false);
     if (errors.length !== 0) {
       setErrors(errors);
-      setProcessing(false);
     } else {
       for (const card of cards) {
         dispatch(
@@ -109,10 +125,9 @@ export function Import() {
             face: 0,
             name: card.card.name,
             quantity: card.count,
-          })
+          }),
         );
       }
-      setProcessing(false);
       setErrors([]);
       setText("");
       setDialogOpen(false);
@@ -151,6 +166,7 @@ export function Import() {
             ))}
           </p>
         )}
+        {status ? <p className={statusText}>{status}</p> : null}
         <div className={buttonRow}>
           <Button onClick={handleImport} disabled={processing}>
             Import

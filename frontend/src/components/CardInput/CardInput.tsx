@@ -17,6 +17,7 @@ import {
   container,
   dropdown,
   entry,
+  header,
   hidden,
   img,
   inputField,
@@ -122,10 +123,12 @@ export function CardInput() {
 
   return (
     <div className={wrapper}>
-      <h1 className={title}>MTG Proxy Maker</h1>
-      <p className={subtitle}>
-        By <a href="https://thesilican.com">Bryan Chen</a>
-      </p>
+      <div className={header}>
+        <h1 className={title}>MTG Proxy Maker</h1>
+        <p className={subtitle}>
+          By <a href="https://thesilican.com">Bryan Chen</a>
+        </p>
+      </div>
       <form className={container} onSubmit={handleSubmit}>
         <Input
           ref={ref}

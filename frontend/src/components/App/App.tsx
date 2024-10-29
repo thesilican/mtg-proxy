@@ -3,12 +3,13 @@ import { defaultTheme } from "../../style/global.css";
 import { CardInput } from "../CardInput/CardInput";
 import { CardPreview } from "../CardPreview/CardPreview";
 import { Clear } from "../Clear/Clear";
+import { Counter } from "../Counter/Counter";
+import { Export } from "../Export/Export";
 import { Import } from "../Import/Import";
 import { LocalStorage } from "../LocalStorage/LocalStorage";
 import { Print } from "../Print/Print";
 import { container, footer } from "./App.css";
-import { Export } from "../Export/Export";
-import { Counter } from "../Counter/Counter";
+import { Split } from "../Split/Split";
 
 export function App() {
   return (
@@ -18,6 +19,7 @@ export function App() {
       <div className={footer}>
         <Import />
         <Export />
+        <Split />
         <Clear />
         <Counter />
         <Print />

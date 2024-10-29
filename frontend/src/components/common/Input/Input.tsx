@@ -16,6 +16,7 @@ type Props = {
   max?: string | number;
   placeholder?: string;
   autoFocus?: boolean;
+  disabled?: boolean;
   onChange?: ChangeEventHandler<HTMLInputElement>;
   onKeyDown?: KeyboardEventHandler<HTMLInputElement>;
 };
@@ -24,18 +25,5 @@ export const Input = React.forwardRef(function Input(
   props: Props,
   ref?: Ref<HTMLInputElement>
 ) {
-  return (
-    <input
-      ref={ref}
-      className={cn(input, props.className)}
-      type={props.type}
-      value={props.value}
-      min={props.min}
-      max={props.max}
-      placeholder={props.placeholder}
-      autoFocus={props.autoFocus}
-      onChange={props.onChange}
-      onKeyDown={props.onKeyDown}
-    />
-  );
+  return <input {...props} ref={ref} className={cn(input, props.className)} />;
 });

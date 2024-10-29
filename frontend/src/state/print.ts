@@ -13,16 +13,22 @@ export type Card = {
 
 export type PrintState = {
   cards: Card[];
+  /** Split pdf feature, how many pages per pdf */
+  split: number | null;
 };
 
 const initialState: PrintState = {
   cards: [],
+  split: null,
 };
 
 export const printSlice = createSlice({
   name: "print",
   initialState,
   reducers: {
+    load(_, action: PayloadAction<PrintState>) {
+      return action.payload;
+    },
     add(state, action: PayloadAction<Card>) {
       state.cards.push(action.payload);
     },
@@ -38,11 +44,11 @@ export const printSlice = createSlice({
     remove(state, action: PayloadAction<number>) {
       state.cards.splice(action.payload, 1);
     },
-    load(state, action: PayloadAction<Card[]>) {
-      state.cards = action.payload;
-    },
     clear(state) {
       state.cards = [];
+    },
+    setSplit(state, action: PayloadAction<number | null>) {
+      state.split = action.payload;
     },
   },
 });

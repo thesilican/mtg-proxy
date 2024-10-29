@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "../../state";
 import { printAction } from "../../state/print";
 
@@ -6,27 +6,24 @@ const STORAGE_KEY = "mtg-proxy";
 
 export function LocalStorage() {
   const dispatch = useAppDispatch();
-  const cards = useAppSelector((s) => s.print.cards);
-  const [loaded, setLoaded] = useState(false);
+  const print = useAppSelector((s) => s.print);
 
   useEffect(() => {
     const text = localStorage.getItem(STORAGE_KEY);
     if (text !== null) {
-      const { cards } = JSON.parse(text);
-      dispatch(printAction.load(cards));
+      try {
+        const { cards, split } = JSON.parse(text);
+        dispatch(printAction.load({ cards, split }));
+      } catch {
+        // Oopsie daisy
+      }
     }
-    setLoaded(true);
-  }, []);
+  }, [dispatch]);
 
   useEffect(() => {
-    if (loaded) {
-      const obj = {
-        cards,
-      };
-      const text = JSON.stringify(obj);
-      localStorage.setItem(STORAGE_KEY, text);
-    }
-  }, [loaded, cards]);
+    const text = JSON.stringify(print);
+    localStorage.setItem(STORAGE_KEY, text);
+  }, [print]);
 
   return null;
 }

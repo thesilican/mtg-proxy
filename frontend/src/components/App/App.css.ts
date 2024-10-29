@@ -3,11 +3,10 @@ import { vars } from "../../style/global.css";
 
 export const container = style({
   margin: "auto",
-  padding: "24px 40px",
+  padding: "0px 24px",
   maxWidth: "850px",
   display: "flex",
   flexDirection: "column",
-  gap: "16px",
   "@media": {
     "screen and (min-width: 850px)": {
       margin: "24px auto",
@@ -20,21 +19,13 @@ export const container = style({
 });
 
 export const footer = style({
-  display: "flex",
   position: "sticky",
   bottom: "0px",
-  gap: "16px",
   background: "white",
   padding: "16px 0px",
   borderTop: `1px solid ${vars.gray4}`,
-  marginTop: "8px",
+  display: "flex",
+  gap: "8px",
+  flexWrap: "wrap",
   zIndex: 1,
-});
-
-export const separator = style({
-  flex: "1",
-  margin: "0px",
-  backgroundColor: vars.gray5,
-  minHeight: "1px",
-  border: "none",
 });

@@ -5,6 +5,10 @@ export const textarea = style({
   height: "400px",
 });
 
+export const statusText = style({
+  margin: "0px",
+});
+
 export const error = style({
   margin: "0px",
 });

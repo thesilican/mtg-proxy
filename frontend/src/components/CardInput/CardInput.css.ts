@@ -3,9 +3,10 @@ import { vars } from "../../style/global.css";
 
 export const wrapper = style({
   display: "flex",
+  gap: "8px",
   flexDirection: "column",
   alignItems: "center",
-  padding: "16px",
+  padding: "16px 0px",
   justifyContent: "center",
   background: "white",
   position: "sticky",
@@ -14,12 +15,18 @@ export const wrapper = style({
   zIndex: 1,
 });
 
+export const header = style({
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+});
+
 export const title = style({
   margin: "0px",
 });
 
 export const subtitle = style({
-  margin: "0px 0px 8px 0px",
+  margin: "0px",
 });
 
 export const container = style({

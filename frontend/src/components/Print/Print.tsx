@@ -12,7 +12,7 @@ import { useLazyCardQuery } from "../../state/api";
 import { QueryStatus } from "@reduxjs/toolkit/query";
 
 export function Print() {
-  const cards = useAppSelector((s) => s.print.cards);
+  const print = useAppSelector((s) => s.print);
   const [disabled, setDisabled] = useState(false);
   const [message, setMessage] = useState("");
   const workerRef = useRef<Worker>();
@@ -29,7 +29,11 @@ export function Print() {
       } else if (message.type === "success") {
         const pdfUrl = URL.createObjectURL(message.data);
         const link = document.createElement("a");
-        link.download = "MTG Proxy.pdf";
+        if (message.part !== null) {
+          link.download = `MTG Proxy ${message.part + 1}.pdf`;
+        } else {
+          link.download = "MTG Proxy.pdf";
+        }
         link.href = pdfUrl;
         link.click();
         link.remove();
@@ -48,7 +52,9 @@ export function Print() {
 
   const handleClick = async () => {
     const reqCards: WorkerRequestCard[] = [];
-    for (const card of cards) {
+    for (let i = 0; i < print.cards.length; i++) {
+      const card = print.cards[i];
+      setMessage(`Downloading card metadata (${i + 1} / ${print.cards.length})`);
       const result = await fetchCards(card.name);
       if (result.status !== QueryStatus.fulfilled) {
         setMessage("Error fetching card data");
@@ -67,6 +73,7 @@ export function Print() {
     const request: WorkerRequest = {
       type: "print",
       cards: reqCards,
+      split: print.split,
     };
     workerRef.current?.postMessage(request);
     setDisabled(true);
@@ -75,7 +82,10 @@ export function Print() {
   return (
     <div className={container}>
       <p className={statusMessage}>{message}</p>
-      <Button onClick={handleClick} disabled={cards.length === 0 || disabled}>
+      <Button
+        onClick={handleClick}
+        disabled={print.cards.length === 0 || disabled}
+      >
         Print
       </Button>
     </div>
