@@ -18,11 +18,9 @@ struct ScryfallBulkDataList {
 struct ScryfallBulkDataItem {
     download_uri: String,
     r#type: String,
-    updated_at: DateTime<Utc>,
 }
 
 struct BulkDataIndex {
-    updated_at: DateTime<Utc>,
     default_cards_uri: String,
     oracle_cards_uri: String,
 }
@@ -78,11 +76,9 @@ impl Downloader {
         let Some(oracle_cards) = data_list.data.iter().find(|x| x.r#type == "oracle_cards") else {
             bail!("unable to find bulk_data object with type oracle_cards");
         };
-        let updated_at = default_cards.updated_at.max(oracle_cards.updated_at);
         Ok(BulkDataIndex {
             default_cards_uri: default_cards.download_uri.to_string(),
             oracle_cards_uri: oracle_cards.download_uri.to_string(),
-            updated_at,
         })
     }
 
@@ -161,7 +157,7 @@ impl Downloader {
             let card = Card {
                 preferred: preferred_ids.contains(&scryfall_card.id),
                 id: scryfall_card.id,
-                name: scryfall_card.name,
+                name: normal_name.name.clone(),
                 image_front_large: front_large,
                 image_front_png: front_png,
                 image_back_large: back_large,
