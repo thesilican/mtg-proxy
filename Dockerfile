@@ -1,4 +1,4 @@
-FROM rust:1.83 AS wasm
+FROM rust:1.91 AS wasm
 
 WORKDIR /app/wasm
 RUN rustup update && \
@@ -22,7 +22,7 @@ RUN npm ci
 COPY frontend/ ./
 RUN npm run build
 
-FROM rust:1.83 AS backend
+FROM rust:1.91 AS backend
 
 WORKDIR /app/backend
 COPY backend/Cargo.* ./
