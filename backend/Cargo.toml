@@ -9,8 +9,10 @@ axum = { version = "0.7.5", features = ["macros"] }
 chrono = { version = "0.4.38", features = ["serde"] }
 env_logger = "0.11.3"
 log = "0.4.21"
+regex = "1.12.3"
 reqwest = { version = "0.12.3", features = ["json"] }
 serde = { version = "1.0.198", features = ["derive"] }
+serde-constant = "0.1.0"
 serde_json = "1.0.116"
 sqlx = { version = "0.8.2", features = ["chrono", "runtime-tokio", "sqlite"] }
 tokio = { version = "1.37.0", features = [

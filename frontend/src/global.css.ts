@@ -16,16 +16,14 @@ export const [defaultTheme, vars] = createTheme({
   blue6: "#0a58ca",
   red5: "#dc3545",
   red6: "#b02a37",
+  glass: "#fffd",
+  shadow: "0px 2px 4px 0px rgba(0, 0, 0, 0.4)",
 });
 
 globalStyle("body", {
-  backgroundColor: vars.gray1,
-  backgroundSize: "cover",
-  backgroundAttachment: "fixed",
-  backgroundPosition: "center",
-  "@media": {
-    "screen and (min-width: 850px)": {
-      backgroundImage: `url(/background.jpg)`,
-    },
-  },
+  fontFamily: "Rubik, sans-serif",
+});
+
+globalStyle("p, h1", {
+  margin: "0px",
 });

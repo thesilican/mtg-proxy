@@ -1,5 +1,5 @@
 import { style } from "@vanilla-extract/css";
-import { vars } from "../../../style/global.css";
+import { vars } from "../../../global.css";
 
 export const button = style({
   userSelect: "none",

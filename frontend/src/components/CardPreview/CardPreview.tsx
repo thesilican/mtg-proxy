@@ -1,108 +1,100 @@
-import { QueryStatus } from "@reduxjs/toolkit/query";
-import { ChangeEvent, useEffect, useState } from "react";
-import loadingPng from "../../assets/loading.png";
+import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../../state";
-import { useCardQuery } from "../../state/api";
+import { isDfc, useCardsQuery } from "../../state/api";
 import { printAction } from "../../state/print";
 import { Button } from "../common/Button/Button";
 import { Input } from "../common/Input/Input";
-import {
-  bottom,
-  cardStyle,
-  container,
-  img,
-  number,
-  placeholder,
-  select,
-  spacer,
-  top,
-} from "./CardPreview.css";
+import * as styles from "./CardPreview.css";
+import loadingPng from "../../assets/loading.png";
 
 export function CardPreview() {
   const cards = useAppSelector((state) => state.print.cards);
+
   return (
-    <div className={container}>
-      {cards.map((card, idx, arr) => {
-        // Count how many names
-        let count = 0;
-        for (let i = 0; i < idx; i++) {
-          if (arr[i].name == card.name) {
-            count++;
-          }
-        }
-        return <Card key={`${card.name}-${count}`} idx={idx} />;
-      })}
-      {cards.length === 0 && (
-        <p className={placeholder}>
+    <div className={styles.wrapper}>
+      {cards.length === 0 ? (
+        <p className={styles.placeholder}>
           To get started, search for a card to add or import a list of cards.
         </p>
+      ) : (
+        <div className={styles.container}>
+          {cards.map((card, idx, arr) => {
+            // Count which instance of the card id
+            let count = 0;
+            for (let i = 0; i < idx; i++) {
+              if (arr[i].name == card.name) {
+                count++;
+              }
+            }
+            return <CardItem key={`${card.name}-${count}`} idx={idx} />;
+          })}
+        </div>
       )}
     </div>
   );
 }
 
-type CardProps = {
-  idx: number;
-};
-
-function Card(props: CardProps) {
+function CardItem({ idx }: { idx: number }) {
+  const card = useAppSelector((state) => state.print.cards[idx]);
   const dispatch = useAppDispatch();
-  const card = useAppSelector((state) => state.print.cards)[props.idx];
-  const [quantity, setQuantity] = useState(card.quantity?.toString());
-
-  const { data: cardData, status } = useCardQuery(card.name);
-
-  const variants = cardData?.cards ?? [];
-  const activeVariant = cardData?.cards.find((x) => x.id === card.id);
-  const isDfc = activeVariant ? !!activeVariant.image_back_png : undefined;
-  const imgSrc =
-    activeVariant && status === QueryStatus.fulfilled
-      ? card.face === 0
-        ? activeVariant.image_front_large
-        : activeVariant.image_back_large!
-      : loadingPng;
-
+  const [quantity, setQuantity] = useState(card.quantity.toString());
   useEffect(() => {
-    const num = parseInt(quantity, 10);
+    setQuantity(card.quantity.toString());
+  }, [card.quantity]);
+
+  const { data } = useCardsQuery({ name: card.name });
+
+  const cards = useMemo(() => data?.cards ?? [], [data]);
+  const activeCard = cards.find((x) => x.id === card.id);
+
+  const imgSrc =
+    card.face === "front"
+      ? activeCard?.images.front_jpg
+      : activeCard?.images.back_jpg;
+
+  const handleUpdateQuantity = (e: ChangeEvent<HTMLInputElement>) => {
+    setQuantity(e.target.value);
+    const num = parseInt(e.target.value, 10);
     if (!isNaN(num)) {
-      dispatch(printAction.update({ idx: props.idx, card: { quantity: num } }));
+      dispatch(printAction.update({ idx, card: { quantity: num } }));
     }
-  }, [dispatch, props.idx, quantity]);
+  };
 
   const handleVariantChange = (e: ChangeEvent<HTMLSelectElement>) => {
     dispatch(
       printAction.update({
-        idx: props.idx,
-        card: {
-          id: e.target.value,
-        },
-      })
+        idx,
+        card: { id: e.target.value },
+      }),
     );
   };
 
   const handleFlip = () => {
     dispatch(
-      printAction.update({ idx: props.idx, card: { face: 1 - card.face } })
+      printAction.update({
+        idx,
+        card: { face: card.face === "front" ? "back" : "front" },
+      }),
     );
   };
 
   const handleRemove = () => {
-    dispatch(printAction.remove(props.idx));
+    dispatch(printAction.remove(idx));
   };
 
   return (
-    <div className={cardStyle}>
-      <div className={top}>
+    <div className={styles.card}>
+      <div className={styles.top}>
         <Input
-          className={number}
+          className={styles.number}
           type="number"
           value={quantity}
           min={1}
           max={999}
-          onChange={(e) => setQuantity(e.target.value)}
+          onChange={handleUpdateQuantity}
         />
-        <div className={spacer} />
-        {isDfc && (
+        <div className={styles.spacer} />
+        {activeCard && isDfc(activeCard) && (
           <Button
             size="small"
             className="material-symbols-outlined"
@@ -120,14 +112,20 @@ function Card(props: CardProps) {
           close
         </Button>
       </div>
-      <img className={img} width={175} height={245} src={imgSrc} />
-      <div className={bottom}>
+      <img
+        className={styles.img}
+        width={175}
+        height={245}
+        src={imgSrc ?? loadingPng}
+        alt={activeCard?.name}
+      />
+      <div className={styles.bottom}>
         <select
-          className={select}
+          className={styles.select}
           value={card.id}
           onChange={handleVariantChange}
         >
-          {variants.map((card) => (
+          {cards.map((card) => (
             <option key={card.id} value={card.id}>
               {`${card.set_name} (${card.collector_number})`}
             </option>

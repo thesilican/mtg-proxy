@@ -1,22 +1,11 @@
-import { QueryStatus } from "@reduxjs/toolkit/query";
-import {
-  ChangeEvent,
-  Fragment,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { Fragment, useState } from "react";
+import { Action } from "redux";
 import { useAppDispatch } from "../../state";
-import {
-  getPreferredCard,
-  useLazyAutocompleteQuery,
-  useLazyCardQuery,
-} from "../../state/api";
+import { ImportCard, useLazyImportQuery } from "../../state/api";
 import { printAction } from "../../state/print";
 import { Button } from "../common/Button/Button";
 import { Dialog } from "../common/Dialog/Dialog";
-import { buttonRow, error, statusText, textarea } from "./Import.css";
+import * as styles from "./Import.css";
 
 const placeholder = `# Import cards in any of the following formats:
 Treasure Cruise
@@ -29,152 +18,116 @@ Consider (MID) 44
 export function Import() {
   const dispatch = useAppDispatch();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [processing, setProcessing] = useState(false);
   const [text, setText] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
-  const [status, setStatus] = useState("");
-  const ref = useRef<HTMLTextAreaElement>(null);
+  const [processing, setProcessing] = useState(false);
 
-  const [fetchAutocomplete] = useLazyAutocompleteQuery();
-  const [fetchCard] = useLazyCardQuery();
+  const [fetchImport] = useLazyImportQuery();
 
-  const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
-    setText(e.target.value);
-    if (errors) {
-      setErrors([]);
+  const handleImport = async () => {
+    setErrors([]);
+    setProcessing(true);
+    const errors = [];
+    try {
+      const counts = [];
+      const cards: ImportCard[] = [];
+      for (const line of text.split("\n")) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith("#") || trimmed.length === 0) {
+          continue;
+        }
+        const match = line.match(
+          /^(?:(\d+)x?\s+)?([^(]+)(?:\(([a-zA-Z0-9]+)\))?(?:\s*([a-zA-Z-0-9]+))?[^(]*$/,
+        );
+        if (match === null) {
+          errors.push(`Invalid format: ${JSON.stringify(line)}`);
+          continue;
+        }
+        const count = match[1] ? parseInt(match[1], 10) : 1;
+        const name = match[2].trim();
+        const set = match[3];
+        const collector_number = match[4];
+        counts.push(count);
+        cards.push({ set, name, collector_number });
+      }
+      const { data } = await fetchImport({ cards });
+      if (!data) {
+        errors.push("Unable to connect to server.");
+        return;
+      }
+      if (data.results.length !== counts.length) {
+        errors.push("There was an error importing cards (length mismatch).");
+        return;
+      }
+      const actions: Action[] = [];
+      for (let i = 0; i < data.results.length; i++) {
+        const result = data.results[i];
+        if (!result.success) {
+          errors.push(result.message);
+        } else {
+          const card = result.card;
+          actions.push(
+            printAction.add({
+              id: card.id,
+              face: "front",
+              name: card.name,
+              quantity: counts[i],
+            }),
+          );
+        }
+      }
+      if (errors.length === 0) {
+        for (const action of actions) {
+          dispatch(action);
+        }
+        setDialogOpen(false);
+        setText("");
+      }
+    } catch (error) {
+      errors.push(`Error importing cards: ${error}`);
+    } finally {
+      setErrors(errors);
+      setProcessing(false);
     }
   };
-
-  const handleImport = useCallback(async () => {
-    setProcessing(true);
-    setErrors([]);
-    const lines = text.split("\n");
-    const errors = [];
-    const cards = [];
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (line.length === 0) {
-        continue;
-      }
-      if (line.startsWith("#")) {
-        continue;
-      }
-      const match = line.match(
-        /^(\d+\s+)?([^(]+)(?:\s+\(([a-zA-Z0-9]+)\))?(?:\s+([a-zA-Z-0-9]+))?$/,
-      );
-      if (match === null) {
-        errors.push(`Invalid format: ${JSON.stringify(line)}`);
-        continue;
-      }
-      const count = match[1] ? parseInt(match[1], 10) : 1;
-      const name = match[2].trim();
-      const setName = match[3];
-      const collectorsNumber = match[4];
-      let result;
-      try {
-        result = await fetchAutocomplete(name);
-      } catch {
-        errors.push(`Network error fetching ${JSON.stringify(name)}`);
-        continue;
-      }
-      if (
-        result.status !== QueryStatus.fulfilled ||
-        result.data.exact.length === 0
-      ) {
-        let error = `Unknown card: ${JSON.stringify(name)}`;
-        if (result.data && result.data.names.length > 0) {
-          error += ` (did you mean '${result.data.names[0]}'?)`;
-        }
-        errors.push(error);
-        continue;
-      }
-      const cardName = result.data.exact[0];
-      setStatus(`Fetching cards (${i + 1} / ${lines.length})`);
-      let cardResult;
-      try {
-        cardResult = await fetchCard(cardName);
-      } catch {
-        errors.push(`Network error fetching ${JSON.stringify(name)}`);
-        continue;
-      }
-      if (cardResult.status !== QueryStatus.fulfilled) {
-        errors.push(`Unknown card: ${JSON.stringify(name)}`);
-        continue;
-      }
-      const cardVariants = cardResult.data.cards;
-      let preferredCard = getPreferredCard(cardResult.data.cards);
-      for (const card of cardVariants) {
-        if (
-          card.set.toLowerCase() === setName?.toLowerCase() &&
-          (!collectorsNumber || card.collector_number == collectorsNumber)
-        ) {
-          preferredCard = card;
-        }
-      }
-      cards.push({ count, card: preferredCard });
-    }
-    setStatus("");
-    setProcessing(false);
-    if (errors.length !== 0) {
-      setErrors(errors);
-    } else {
-      for (const card of cards) {
-        dispatch(
-          printAction.add({
-            id: card.card.id,
-            face: 0,
-            name: card.card.name,
-            quantity: card.count,
-          }),
-        );
-      }
-      setErrors([]);
-      setText("");
-      setDialogOpen(false);
-    }
-  }, [dispatch, fetchAutocomplete, fetchCard, text]);
-
-  useEffect(() => {
-    const textarea = ref.current;
-    const handler = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.code === "Enter") {
-        e.preventDefault();
-        handleImport();
-      }
-    };
-    textarea?.addEventListener("keydown", handler);
-    return () => textarea?.removeEventListener("keydown", handler);
-  }, [handleImport]);
 
   return (
     <>
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)}>
-        <textarea
-          ref={ref}
-          className={textarea}
-          placeholder={placeholder}
-          value={text}
-          onChange={handleChange}
-        />
-        {errors.length > 0 && (
-          <p className={error}>
-            {errors.map((x, i) => (
-              <Fragment key={i}>
-                {i !== 0 && <br />}
-                {x}
-              </Fragment>
-            ))}
-          </p>
-        )}
-        {status ? <p className={statusText}>{status}</p> : null}
-        <div className={buttonRow}>
-          <Button onClick={handleImport} disabled={processing}>
-            Import
-          </Button>
-          <Button variant="secondary" onClick={() => setDialogOpen(false)}>
-            Cancel
-          </Button>
-        </div>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleImport();
+          }}
+        >
+          <textarea
+            className={styles.textarea}
+            placeholder={placeholder}
+            value={text}
+            onChange={(e) => {
+              setText(e.target.value);
+              setErrors([]);
+            }}
+          />
+          {errors.length > 0 && (
+            <p className={styles.error}>
+              {errors.map((x, i) => (
+                <Fragment key={i}>
+                  {i !== 0 && <br />}
+                  {x}
+                </Fragment>
+              ))}
+            </p>
+          )}
+          <div className={styles.buttonRow}>
+            <Button type="submit" disabled={processing}>
+              {processing ? "Importing..." : "Import"}
+            </Button>
+            <Button variant="secondary" onClick={() => setDialogOpen(false)}>
+              Cancel
+            </Button>
+          </div>
+        </form>
       </Dialog>
       <Button onClick={() => setDialogOpen(true)}>Import</Button>
     </>

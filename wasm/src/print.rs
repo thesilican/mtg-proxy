@@ -2,16 +2,17 @@ use std::{io::Cursor, mem, sync::Arc};
 
 use anyhow::{Context, Result};
 use image::{
-    codecs::png::PngDecoder, imageops::overlay, DynamicImage, GenericImageView, ImageDecoder, Rgba,
-    RgbaImage,
+    DynamicImage, GenericImageView, ImageReader, Rgba, RgbaImage,
+    imageops::{FilterType::CatmullRom, overlay},
 };
 use imageproc::{drawing::draw_filled_rect_mut, rect::Rect};
 use js_sys::Function;
 use lopdf::{
+    Document, Object, Stream,
     content::{Content, Operation},
-    dictionary, Document, Object, Stream,
+    dictionary,
 };
-use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
+use wasm_bindgen::{JsValue, prelude::wasm_bindgen};
 
 struct Card {
     data: Arc<[u8]>,
@@ -109,12 +110,12 @@ impl PrintJob {
         // Convert images from png
         let mut images = Vec::new();
         for png in pngs {
-            let mut buf = RgbaImage::new(WIDTH, HEIGHT);
-            let buf_reader = Cursor::new(&*png);
-            PngDecoder::new(buf_reader)?
-                .read_image(&mut buf)
-                .context("could not decode image")?;
-            images.push(buf);
+            let reader = ImageReader::new(Cursor::new(&*png))
+                .with_guessed_format()
+                .context("could not guess image format")?;
+            let image = reader.decode().context("could not decode image")?;
+            let resized = image.resize_exact(WIDTH, HEIGHT, CatmullRom);
+            images.push(resized);
         }
 
         // Create padding images
@@ -123,7 +124,7 @@ impl PrintJob {
             *pixel = Rgba([0xff, 0xff, 0xff, 0xff]);
         }
         while images.len() < CARD_COUNT as usize {
-            images.push(padding.clone());
+            images.push(DynamicImage::from(padding.clone()));
         }
 
         // Create page image

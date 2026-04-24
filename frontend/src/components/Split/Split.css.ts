@@ -1,5 +1,5 @@
 import { style } from "@vanilla-extract/css";
-import { vars } from "../../style/global.css";
+import { vars } from "../../global.css";
 
 export const dialog = style({
   width: "300px",
@@ -8,10 +8,6 @@ export const dialog = style({
 
 export const numberInput = style({
   width: "60px",
-});
-
-export const helperText = style({
-  margin: "0px",
 });
 
 export const disabled = style({

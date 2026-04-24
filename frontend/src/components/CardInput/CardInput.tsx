@@ -1,30 +1,11 @@
-import { QueryStatus } from "@reduxjs/toolkit/query";
 import cn from "classnames";
-import { FormEvent, useEffect, useRef, useState } from "react";
-import loadingPng from "../../assets/loading.png";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useAppDispatch } from "../../state";
-import {
-  getPreferredCard,
-  useAutocompleteQuery,
-  useCardQuery,
-} from "../../state/api";
+import { ApiCard, useSearchQuery } from "../../state/api";
 import { printAction } from "../../state/print";
 import { Button } from "../common/Button/Button";
 import { Input } from "../common/Input/Input";
-import {
-  active,
-  autocomplete,
-  container,
-  dropdown,
-  entry,
-  header,
-  hidden,
-  img,
-  inputField,
-  subtitle,
-  title,
-  wrapper,
-} from "./CardInput.css";
+import * as styles from "./CardInput.css";
 
 export function CardInput() {
   const dispatch = useAppDispatch();
@@ -47,44 +28,19 @@ export function CardInput() {
     return () => document.removeEventListener("keydown", handler);
   }, []);
 
-  const { data: autocompleteData, status: autocompleteStatus } =
-    useAutocompleteQuery(input);
-
-  const autocompleteNames = autocompleteData?.names ?? [];
-  const activeName = autocompleteNames[activeIdx] as string | undefined;
-
-  const { data: activeCardData, status: activeCardStatus } = useCardQuery(
-    activeName ?? "",
-    {
-      skip: activeName === undefined,
-    }
-  );
-
-  const allFulfilled =
-    autocompleteStatus === QueryStatus.fulfilled &&
-    activeCardStatus === QueryStatus.fulfilled;
-
-  let imageSrc: string | undefined;
-  if (activeCardData && activeCardData.cards.length > 0) {
-    const card = getPreferredCard(activeCardData.cards);
-    if (card.name === activeName) {
-      imageSrc = card.image_front_large;
-    } else {
-      imageSrc = loadingPng;
-    }
-  }
+  const { data } = useSearchQuery({ q: input });
+  const cards = useMemo(() => data?.cards ?? [], [data]);
+  const activeCard = cards[activeIdx] ?? null;
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      if (autocompleteNames.length > 0) {
-        setActiveIdx((activeIdx + 1) % autocompleteNames.length);
+      if (cards.length > 0) {
+        setActiveIdx((activeIdx + 1) % cards.length);
       }
     } else if (e.key === "ArrowUp") {
-      if (autocompleteNames.length > 0) {
-        setActiveIdx(
-          (activeIdx + autocompleteNames.length - 1) % autocompleteNames.length
-        );
+      if (cards.length > 0) {
+        setActiveIdx((activeIdx + cards.length - 1) % cards.length);
       }
     }
   };
@@ -99,95 +55,83 @@ export function CardInput() {
 
   const handleSubmit = (e?: FormEvent) => {
     e?.preventDefault();
-    if (
-      !allFulfilled ||
-      !activeCardData ||
-      activeCardData.cards.length === 0 ||
-      !activeName
-    ) {
+    if (!activeCard) {
       return;
     }
     setInput("");
     setActiveIdx(0);
-    const name = activeName;
-    const id = getPreferredCard(activeCardData.cards).id;
     dispatch(
       printAction.add({
-        name,
+        id: activeCard.id,
+        name: activeCard.name,
         quantity: 1,
-        face: 0,
-        id,
-      })
+        face: "front",
+      }),
     );
   };
 
   return (
-    <div className={wrapper}>
-      <div className={header}>
-        <h1 className={title}>MTG Proxy Maker</h1>
-        <p className={subtitle}>
-          By <a href="https://thesilican.com">Bryan Chen</a>
-        </p>
-      </div>
-      <form className={container} onSubmit={handleSubmit}>
-        <Input
-          ref={ref}
-          className={inputField}
-          type="text"
-          placeholder="Enter a card name"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          autoFocus
-        />
-        <Button type="submit">Add</Button>
-        <AutoComplete
-          activeIdx={activeIdx}
-          entries={autocompleteNames}
-          status={autocompleteStatus}
-          imageSrc={imageSrc}
-          onClick={handleClick}
-        />
-      </form>
-    </div>
+    <form className={styles.container} onSubmit={handleSubmit}>
+      <Input
+        ref={ref}
+        className={styles.inputField}
+        type="text"
+        placeholder="Enter a card name"
+        value={input}
+        onChange={(e) => {
+          setActiveIdx(0);
+          setInput(e.target.value);
+        }}
+        onKeyDown={handleKeyDown}
+        autoFocus
+      />
+      <Button type="submit">Add</Button>
+      <AutoComplete
+        cards={cards}
+        activeCard={activeCard}
+        onClick={handleClick}
+      />
+    </form>
   );
 }
 
-type AutoCompleteProps = {
-  status: QueryStatus;
-  entries: string[];
-  activeIdx: number;
-  imageSrc: string | undefined;
+function AutoComplete({
+  cards,
+  activeCard,
+  onClick,
+}: {
+  cards: ApiCard[];
+  activeCard: ApiCard | null;
   onClick: (idx: number) => void;
-};
-
-function AutoComplete(props: AutoCompleteProps) {
-  const isHidden = props.entries.length === 0;
-  const imageSrc = props.imageSrc ?? loadingPng;
-
+}) {
   return (
-    <div className={cn(autocomplete, isHidden && hidden)}>
-      <div className={dropdown}>
-        {props.entries.map((val, i) => {
-          const isActive = i === props.activeIdx;
+    <div
+      className={cn(styles.autocomplete, cards.length === 0 && styles.hidden)}
+    >
+      <div className={styles.dropdown}>
+        {cards.map((card, i) => {
+          const isActive = card.id === activeCard?.id;
           return (
             <span
-              key={i}
-              className={cn(entry, isActive && active)}
+              key={card.id}
+              className={cn(styles.entry, isActive && styles.active)}
               ref={(e) => isActive && e?.scrollIntoView({ block: "nearest" })}
-              onClick={() => props.onClick(i)}
+              onClick={() => onClick(i)}
             >
-              {val}
+              {card.name}
+              {card.flavor_name && ` (${card.flavor_name})`}
             </span>
           );
         })}
       </div>
-      <img
-        className={cn(img, false && hidden)}
-        width={146}
-        height={204}
-        src={imageSrc}
-      />
+      {activeCard && (
+        <img
+          className={styles.img}
+          width={146}
+          height={204}
+          src={activeCard.images.front_jpg}
+        />
+      )}
     </div>
   );
 }

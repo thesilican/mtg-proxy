@@ -1,6 +1,6 @@
 import cn from "classnames";
 import { ReactNode, SyntheticEvent, useEffect, useRef } from "react";
-import { dialog } from "./Dialog.css";
+import * as styles from "./Dialog.css";
 
 type DialogProps = {
   open: boolean;
@@ -33,7 +33,7 @@ export function Dialog(props: DialogProps) {
   return (
     <dialog
       ref={ref}
-      className={cn(dialog, props.className)}
+      className={cn(styles.dialog, props.className)}
       onClose={handleClose}
       onCancel={handleClose}
     >

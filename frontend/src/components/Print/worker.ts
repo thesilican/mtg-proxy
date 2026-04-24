@@ -1,5 +1,6 @@
 import { PrintJob } from "mtg-print";
 import { chunk } from "../../util";
+import JSZip from "jszip";
 
 export type WorkerRequestCard = {
   count: number;
@@ -20,7 +21,7 @@ export type WorkerResponse =
   | {
       type: "success";
       data: Blob;
-      part: number | null;
+      fileType: "pdf" | "zip";
     }
   | {
       type: "failed";
@@ -96,6 +97,7 @@ self.addEventListener("message", async (event: MessageEvent<WorkerRequest>) => {
     partitions.push(partition);
   }
 
+  const blobs = [];
   for (let i = 0; i < partitions.length; i++) {
     const job = new PrintJob();
     try {
@@ -107,11 +109,7 @@ self.addEventListener("message", async (event: MessageEvent<WorkerRequest>) => {
       });
       const output = job.run();
       const pdf = new Blob([output], { type: "application/pdf" });
-      self.postMessage({
-        type: "success",
-        data: pdf,
-        part: split ? i : null,
-      } as WorkerResponse);
+      blobs.push(pdf);
     } catch (error) {
       self.postMessage({
         type: "failed",
@@ -121,5 +119,23 @@ self.addEventListener("message", async (event: MessageEvent<WorkerRequest>) => {
     } finally {
       job.free();
     }
+  }
+  if (blobs.length === 1) {
+    self.postMessage({
+      type: "success",
+      data: blobs[0],
+      fileType: "pdf",
+    } as WorkerResponse);
+  } else {
+    const zip = new JSZip();
+    for (let i = 0; i < blobs.length; i++) {
+      zip.file(`MTG Proxy ${i + 1}.pdf`, blobs[i]);
+    }
+    const blob = await zip.generateAsync({ type: "blob" });
+    self.postMessage({
+      type: "success",
+      data: blob,
+      fileType: "zip",
+    } as WorkerResponse);
   }
 });

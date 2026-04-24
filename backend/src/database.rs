@@ -1,35 +1,34 @@
+use crate::{canonicalize_name, split_normalize_name};
 use anyhow::{Context, Result};
 use chrono::{DateTime, NaiveDate, Utc};
-use log::{info, warn};
+use log::info;
 use serde::Serialize;
-use sqlx::{migrate::MigrateDatabase, prelude::FromRow, Sqlite, SqlitePool};
+use sqlx::{Sqlite, SqlitePool, migrate::MigrateDatabase, prelude::FromRow};
 use std::path::PathBuf;
-use unicode_normalization::UnicodeNormalization;
 
+#[derive(Serialize, FromRow, Clone)]
 pub struct Metadata {
-    pub last_updated: Option<DateTime<Utc>>,
+    pub last_updated: DateTime<Utc>,
 }
 
-#[derive(Serialize, FromRow)]
+#[derive(Serialize, FromRow, Clone)]
 pub struct Card {
     pub id: String,
     pub name: String,
-    pub image_front_large: String,
+    pub flavor_name: Option<String>,
+    pub normal_name_front: String,
+    pub normal_name_back: Option<String>,
+    pub normal_flavor_name_front: Option<String>,
+    pub normal_flavor_name_back: Option<String>,
+    pub image_front_jpg: String,
     pub image_front_png: String,
-    pub image_back_large: Option<String>,
+    pub image_back_jpg: Option<String>,
     pub image_back_png: Option<String>,
     pub set: String,
     pub set_name: String,
     pub collector_number: String,
     pub released_at: NaiveDate,
     pub preferred: bool,
-}
-
-#[derive(FromRow)]
-pub struct NormalName {
-    pub name: String,
-    pub normal_front: String,
-    pub normal_back: Option<String>,
 }
 
 pub struct Database {
@@ -60,10 +59,15 @@ impl Database {
         static INITIALIZATION_QUERIES: &[&str] = &[
             "CREATE TABLE IF NOT EXISTS cards (
                 id TEXT PRIMARY KEY,
-                name TEXT,
-                image_front_large TEXT,
-                image_front_png TEXT,
-                image_back_large TEXT,
+                name TEXT NOT NULL,
+                flavor_name TEXT,
+                normal_name_front TEXT NOT NULL,
+                normal_name_back TEXT,
+                normal_flavor_name_front TEXT,
+                normal_flavor_name_back TEXT,
+                image_front_jpg TEXT NOT NULL,
+                image_front_png TEXT NOT NULL,
+                image_back_jpg TEXT,
                 image_back_png TEXT,
                 \"set\" TEXT,
                 set_name TEXT,
@@ -71,172 +75,135 @@ impl Database {
                 released_at TEXT,
                 preferred INTEGER
             )",
-            "CREATE INDEX IF NOT EXISTS cards_name_index
+            "CREATE INDEX IF NOT EXISTS cards_name_idx
                 ON cards (name)",
-            "CREATE TABLE IF NOT EXISTS normal_names (
-                name TEXT PRIMARY KEY,
-                normal_front TEXT,
-                normal_back TEXT
-            )",
-            "CREATE INDEX IF NOT EXISTS normal_names_front_index
-                ON normal_names (normal_front)",
-            "CREATE INDEX IF NOT EXISTS normal_names_back_index
-                ON normal_names (normal_back)",
             "CREATE TABLE IF NOT EXISTS metadata (
-                key TEXT PRIMARY KEY,
-                value TEXT
+                id INTEGER PRIMARY KEY,
+                last_updated TEXT
             )",
         ];
+        let mut tx = self.pool.begin().await?;
         for query in INITIALIZATION_QUERIES {
-            sqlx::query(query).execute(&self.pool).await?;
+            sqlx::query(query).execute(&mut *tx).await?;
         }
-        Ok(())
+        tx.commit().await.context("failed to initialize db")
     }
 
-    pub async fn get_metadata(&self) -> Result<Metadata> {
-        let data: Vec<(String, String)> = sqlx::query_as("SELECT key, value FROM metadata")
-            .fetch_all(&self.pool)
-            .await?;
-        let mut metadata = Metadata { last_updated: None };
-        for (key, val) in data {
-            match key.as_ref() {
-                "last_updated" => {
-                    let last_updated = DateTime::parse_from_rfc3339(&val)
-                        .context("failed to parse last_updated")?
-                        .to_utc();
-                    metadata.last_updated = Some(last_updated);
-                }
-                _ => {
-                    warn!("unknown database metadata key: {key}");
-                }
-            }
-        }
-        Ok(metadata)
-    }
-
-    pub async fn set_metadata(&self, metadata: Metadata) -> Result<()> {
-        async fn insert(pool: &SqlitePool, key: &str, val: Option<String>) -> Result<()> {
-            sqlx::query(
-                "INSERT INTO metadata (key, value)
-                    VALUES ($1, $2)
-                    ON CONFLICT (key) DO UPDATE SET value = $2",
-            )
-            .bind(key)
-            .bind(val)
-            .execute(pool)
-            .await?;
-            Ok(())
-        }
-
-        insert(
-            &self.pool,
-            "last_updated",
-            metadata.last_updated.map(|date| date.to_rfc3339()),
+    pub async fn get_card(&self, id: &str) -> Result<Option<Card>> {
+        sqlx::query_as(
+            "SELECT * FROM cards
+                WHERE id = $1",
         )
-        .await?;
-        Ok(())
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await
+        .context("failed to get card")
     }
 
     pub async fn get_cards_by_name(&self, name: &str) -> Result<Vec<Card>> {
-        let cards: Vec<Card> = sqlx::query_as(
+        sqlx::query_as(
             "SELECT * FROM cards
-                WHERE name = $1",
+                WHERE name = $1 OR flavor_name = $1",
         )
-        .bind(name)
+        .bind(canonicalize_name(name))
         .fetch_all(&self.pool)
-        .await?;
-        Ok(cards)
+        .await
+        .context("failed to get cards by name")
     }
 
-    pub async fn insert_card(&self, card: &Card) -> Result<()> {
-        sqlx::query(
-            "INSERT INTO cards
-                    (id, name, image_front_large, image_front_png,
-                        image_back_large, image_back_png, \"set\", set_name,
+    pub async fn get_cards_by_name_front(&self, name: &str) -> Result<Vec<Card>> {
+        sqlx::query_as(
+            "SELECT * FROM cards
+                WHERE name LIKE $1 OR flavor_name LIKE $1",
+        )
+        .bind(format!("{} // %", canonicalize_name(name)))
+        .fetch_all(&self.pool)
+        .await
+        .context("failed to get cards by front name")
+    }
+
+    pub async fn get_cards_by_search(&self, name: &str) -> Result<Vec<Card>> {
+        let (front, back) = split_normalize_name(name);
+        sqlx::query_as(
+            "SELECT * FROM cards
+            WHERE 
+                ($2 IS NULL AND
+                    (instr(normal_name_front, $1)
+                        OR instr(normal_name_back, $1)
+                        OR instr(normal_flavor_name_front, $1)
+                        OR instr(normal_flavor_name_back, $1)))
+                OR
+                ((normal_name_front == $1 AND normal_name_back == $2)
+                    OR (normal_flavor_name_front == $1 AND normal_flavor_name_back == $2))
+            ORDER BY released_at DESC",
+        )
+        .bind(front)
+        .bind(back)
+        .fetch_all(&self.pool)
+        .await
+        .context("failed to get cards by search")
+    }
+
+    pub async fn insert_cards(&self, cards: &[Card]) -> Result<()> {
+        let mut tx = self.pool.begin().await?;
+        for card in cards {
+            sqlx::query(
+                "INSERT INTO cards
+                    (id, name, flavor_name, normal_name_front, normal_name_back,
+                        normal_flavor_name_front, normal_flavor_name_back, image_front_jpg,
+                        image_front_png, image_back_jpg, image_back_png, \"set\", set_name,
                         collector_number, released_at, preferred)
-                VALUES
-                    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-                ON CONFLICT DO NOTHING",
-        )
-        .bind(&card.id)
-        .bind(&card.name)
-        .bind(&card.image_front_large)
-        .bind(&card.image_front_png)
-        .bind(&card.image_back_large)
-        .bind(&card.image_back_png)
-        .bind(&card.set)
-        .bind(&card.set_name)
-        .bind(&card.collector_number)
-        .bind(card.released_at.to_string())
-        .bind(card.preferred)
-        .execute(&self.pool)
-        .await?;
-        Ok(())
-    }
-
-    pub async fn get_normal_name(&self, search: &NormalName) -> Result<Vec<NormalName>> {
-        let mut results = Vec::<NormalName>::new();
-        let front: Vec<NormalName> = sqlx::query_as(
-            "SELECT * FROM normal_names
-                WHERE normal_front LIKE $1 || '%'
-                    OR normal_back LIKE $1 || '%'",
-        )
-        .bind(&search.normal_front)
-        .fetch_all(&self.pool)
-        .await?;
-        results.extend(front);
-        if let Some(search_back) = &search.normal_back {
-            let back = sqlx::query_as(
-                "SELECT * FROM normal_names
-                    WHERE normal_back LIKE $1 || '%'",
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+                ON CONFLICT DO UPDATE SET
+                    (id, name, flavor_name, normal_name_front, normal_name_back,
+                            normal_flavor_name_front, normal_flavor_name_back, image_front_jpg,
+                            image_front_png, image_back_jpg, image_back_png, \"set\", set_name,
+                            collector_number, released_at, preferred)
+                    = ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)",
             )
-            .bind(search_back)
-            .fetch_all(&self.pool)
+            .bind(&card.id)
+            .bind(&card.name)
+            .bind(&card.flavor_name)
+            .bind(&card.normal_name_front)
+            .bind(&card.normal_name_back)
+            .bind(&card.normal_flavor_name_front)
+            .bind(&card.normal_flavor_name_back)
+            .bind(&card.image_front_jpg)
+            .bind(&card.image_front_png)
+            .bind(&card.image_back_jpg)
+            .bind(&card.image_back_png)
+            .bind(&card.set)
+            .bind(&card.set_name)
+            .bind(&card.collector_number)
+            .bind(card.released_at.to_string())
+            .bind(card.preferred)
+            .execute(&mut *tx)
             .await?;
-            results.extend(back);
         }
-        Ok(results)
+        tx.commit().await.context("transaction failed")
     }
 
-    pub async fn insert_normal_name(&self, normal_name: &NormalName) -> Result<()> {
-        sqlx::query(
-            "INSERT INTO normal_names
-                    (name, normal_front, normal_back)
-                VALUES ($1, $2, $3)
-                ON CONFLICT DO NOTHING",
+    pub async fn get_metadata(&self) -> Result<Option<Metadata>> {
+        sqlx::query_as::<_, Metadata>(
+            "SELECT * FROM metadata
+                WHERE id = 0",
         )
-        .bind(&normal_name.name)
-        .bind(&normal_name.normal_front)
-        .bind(&normal_name.normal_back)
+        .fetch_optional(&self.pool)
+        .await
+        .context("failed to get metadata")
+    }
+
+    pub async fn set_metadata(&self, metadata: Metadata) -> Result<()> {
+        sqlx::query(
+            "INSERT INTO metadata (id, last_updated)
+                VALUES (0, $1)
+                ON CONFLICT (id) DO UPDATE
+                SET last_updated = $1",
+        )
+        .bind(metadata.last_updated)
         .execute(&self.pool)
-        .await?;
+        .await
+        .context("failed to set metadata")?;
         Ok(())
-    }
-
-    pub fn normalize_string(text: &str) -> String {
-        let mut normalized = String::new();
-        let mut last_char_space = false;
-        for char in text.chars() {
-            if char.is_ascii_alphanumeric() {
-                normalized.push(char.to_ascii_lowercase());
-                last_char_space = false;
-            } else if char.is_whitespace() && !last_char_space {
-                normalized.push('-');
-                last_char_space = true;
-            }
-        }
-        normalized
-    }
-
-    pub fn normalize_name(name: &str) -> NormalName {
-        let name = name.trim().nfd().to_string();
-        let mut splits = name.split(" // ");
-        let normal_front = Database::normalize_string(splits.next().unwrap());
-        let normal_back = splits.next().map(Database::normalize_string);
-        NormalName {
-            name,
-            normal_front,
-            normal_back,
-        }
     }
 }

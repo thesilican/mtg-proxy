@@ -1,46 +1,52 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useAppSelector } from "../../state";
-import { useLazyCardQuery } from "../../state/api";
+import { useCardsQuery } from "../../state/api";
 import { Button } from "../common/Button/Button";
 import { Dialog } from "../common/Dialog/Dialog";
 import { buttonRow, cancel, textarea } from "./Export.css";
-import { QueryStatus } from "@reduxjs/toolkit/query";
 
 export function Export() {
   const cards = useAppSelector((s) => s.print.cards);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [text, setText] = useState("");
+  const [open, setOpen] = useState(false);
 
-  const [fetchCard] = useLazyCardQuery();
+  const { data, isLoading } = useCardsQuery(
+    {
+      ids: cards.map(({ id }) => id),
+    },
+    {
+      skip: !open,
+    },
+  );
+  const cardsMap = useMemo(
+    () => new Map((data?.cards ?? []).map((card) => [card.id, card])),
+    [data],
+  );
 
-  const handleOpen = async () => {
-    setDialogOpen(true);
-    setText("Loading...");
+  const text = useMemo(() => {
+    if (isLoading) {
+      return "Loading...";
+    }
+    if (!data) {
+      return "An unexpected error has occurred.";
+    }
     const lines = [];
-    for (const card of cards) {
-      const { id, name, quantity } = card;
-      const data = await fetchCard(name, true);
-      if (data.status !== QueryStatus.fulfilled) {
-        setText("Error fetching card data");
-        break;
+    for (const { quantity, id } of cards) {
+      const apiCard = cardsMap.get(id);
+      if (!apiCard) {
+        lines.push("???");
+        continue;
       }
-      let set = "???";
-      let collectorNumber = "???";
-      for (const card of data.data.cards) {
-        if (card.id === id) {
-          set = card.set.toUpperCase();
-          collectorNumber = card.collector_number;
-          break;
-        }
-      }
+      const name = apiCard.flavor_name ?? apiCard.name;
+      const set = apiCard.set.toUpperCase();
+      const collectorNumber = apiCard.collector_number;
       lines.push(`${quantity} ${name} (${set}) ${collectorNumber}`);
     }
-    setText(lines.join("\n"));
-  };
+    return lines.join("\n");
+  }, [cards, cardsMap, data, isLoading]);
 
   return (
     <>
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)}>
+      <Dialog open={open} onClose={() => setOpen(false)}>
         <textarea
           className={textarea}
           value={text}
@@ -48,12 +54,12 @@ export function Export() {
           onClick={(e) => e.currentTarget.select()}
         />
         <div className={buttonRow}>
-          <Button className={cancel} onClick={() => setDialogOpen(false)}>
+          <Button className={cancel} onClick={() => setOpen(false)}>
             Close
           </Button>
         </div>
       </Dialog>
-      <Button onClick={handleOpen}>Export</Button>
+      <Button onClick={() => setOpen(true)}>Export</Button>
     </>
   );
 }

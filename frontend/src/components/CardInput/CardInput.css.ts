@@ -1,36 +1,8 @@
 import { style } from "@vanilla-extract/css";
-import { vars } from "../../style/global.css";
-
-export const wrapper = style({
-  display: "flex",
-  gap: "8px",
-  flexDirection: "column",
-  alignItems: "center",
-  padding: "16px 0px",
-  justifyContent: "center",
-  background: "white",
-  position: "sticky",
-  top: "0px",
-  borderBottom: `1px solid ${vars.gray4}`,
-  zIndex: 1,
-});
-
-export const header = style({
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-});
-
-export const title = style({
-  margin: "0px",
-});
-
-export const subtitle = style({
-  margin: "0px",
-});
+import { vars } from "../../global.css";
 
 export const container = style({
-  flex: "1",
+  alignSelf: "center",
   display: "flex",
   gap: "8px",
   position: "relative",
@@ -41,11 +13,6 @@ export const container = style({
 export const inputField = style({
   flex: "1",
   userSelect: "none",
-  borderRadius: "4px",
-  border: `1px solid ${vars.gray5}`,
-  ":focus-visible": {
-    borderColor: vars.blue6,
-  },
 });
 
 export const autocomplete = style({
@@ -64,7 +31,7 @@ export const dropdown = style({
   flex: "1",
   borderRadius: "4px",
   backgroundColor: vars.white,
-  boxShadow: "0 8px 16px rgba(0, 0, 0, .15)",
+  boxShadow: vars.shadow,
   display: "flex",
   flexDirection: "column",
   overflow: "auto",
@@ -76,12 +43,12 @@ export const entry = style({
 });
 
 export const active = style({
-  backgroundColor: vars.gray3,
+  backgroundColor: vars.gray2,
 });
 
 export const img = style({
   boxShadow: "0 8px 16px rgba(0, 0, 0, .15)",
-  borderRadius: "4px",
+  borderRadius: "8px",
   width: "146px",
   height: "204px",
 });

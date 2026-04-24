@@ -1,19 +1,15 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
 export type Card = {
-  /** Scryfall card id */
   id: string;
-  /** Scryfall card name */
   name: string;
-  /** Quantity of cards */
   quantity: number;
-  /** Card face (0 = front, 1 = back) */
-  face: number;
+  face: "front" | "back";
 };
 
 export type PrintState = {
   cards: Card[];
-  /** Split pdf feature, how many pages per pdf */
+  // How many pages per pdf
   split: number | null;
 };
 

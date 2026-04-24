@@ -1,5 +1,5 @@
 import { MouseEventHandler, ReactNode } from "react";
-import { button, danger, secondary, small } from "./Button.css";
+import * as styles from "./Button.css";
 import cn from "classnames";
 
 type Props = {
@@ -17,11 +17,11 @@ export function Button(props: Props) {
   return (
     <button
       className={cn(
-        button,
-        props.variant === "secondary" && secondary,
-        props.variant === "danger" && danger,
-        props.size === "small" && small,
-        props.className
+        styles.button,
+        props.variant === "secondary" && styles.secondary,
+        props.variant === "danger" && styles.danger,
+        props.size === "small" && styles.small,
+        props.className,
       )}
       type={props.type}
       title={props.title}

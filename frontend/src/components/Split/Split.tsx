@@ -1,11 +1,17 @@
+import cn from "classnames";
 import { ChangeEvent, useEffect, useState } from "react";
+import { useAppDispatch, useAppSelector } from "../../state";
+import { printAction } from "../../state/print";
 import { Button } from "../common/Button/Button";
 import { Dialog } from "../common/Dialog/Dialog";
 import { Input } from "../common/Input/Input";
-import { buttonRow, close, dialog, disabled, helperText, numberInput } from "./Split.css";
-import { useAppDispatch, useAppSelector } from "../../state";
-import { printAction } from "../../state/print";
-import cn from "classnames";
+import {
+  buttonRow,
+  close,
+  dialog,
+  disabled,
+  numberInput
+} from "./Split.css";
 
 const DEFAULT_SPLIT_COUNT = 3;
 
@@ -65,7 +71,6 @@ export function Split() {
             onChange={handleSplitCountsChange}
           />
         </label>
-        <p className={helperText}>{split ? `(~${split * 10}MB per PDF)` : ""}</p>
         <div className={buttonRow}>
           <Button className={close} onClick={() => setOpen(false)}>
             Close

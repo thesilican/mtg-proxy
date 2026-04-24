@@ -8,7 +8,7 @@ import type {
   WorkerResponse,
 } from "./worker";
 import PrintWorker from "./worker?worker";
-import { useLazyCardQuery } from "../../state/api";
+import { useLazyCardsQuery } from "../../state/api";
 import { QueryStatus } from "@reduxjs/toolkit/query";
 
 export function Print() {
@@ -17,7 +17,7 @@ export function Print() {
   const [message, setMessage] = useState("");
   const workerRef = useRef<Worker>();
 
-  const [fetchCards] = useLazyCardQuery();
+  const [fetchCards] = useLazyCardsQuery();
 
   useEffect(() => {
     const worker = new PrintWorker();
@@ -27,16 +27,18 @@ export function Print() {
       if (message.type === "progess") {
         setMessage(message.message);
       } else if (message.type === "success") {
-        const pdfUrl = URL.createObjectURL(message.data);
+        const url = URL.createObjectURL(message.data);
         const link = document.createElement("a");
-        if (message.part !== null) {
-          link.download = `MTG Proxy ${message.part + 1}.pdf`;
+        if (message.fileType === "pdf") {
+          link.download = `MTG Proxy.pdf`;
         } else {
-          link.download = "MTG Proxy.pdf";
+          link.download = "MTG Proxy.zip";
         }
-        link.href = pdfUrl;
+        link.href = url;
+        link.target = "_blank";
         link.click();
         link.remove();
+        URL.revokeObjectURL(url);
         setMessage(`Done!`);
         setDisabled(false);
       } else if (message.type === "failed") {
@@ -51,24 +53,34 @@ export function Print() {
   }, []);
 
   const handleClick = async () => {
+    const { data, status } = await fetchCards({
+      ids: print.cards.map((x) => x.id),
+    });
+    if (status !== QueryStatus.fulfilled) {
+      setMessage("Error fetching card data");
+      return;
+    }
+    const cardMap = new Map(data.cards.map((x) => [x.id, x]));
     const reqCards: WorkerRequestCard[] = [];
-    for (let i = 0; i < print.cards.length; i++) {
-      const card = print.cards[i];
-      setMessage(`Downloading card metadata (${i + 1} / ${print.cards.length})`);
-      const result = await fetchCards(card.name);
-      if (result.status !== QueryStatus.fulfilled) {
-        setMessage("Error fetching card data");
+    for (const card of print.cards) {
+      const info = cardMap.get(card.id);
+      if (!info) {
+        setMessage(`Error fetching card data (${card.id})`);
         return;
       }
-      for (const cardData of result.data.cards) {
-        if (cardData.id === card.id) {
-          const url =
-            card.face === 0
-              ? cardData.image_front_png
-              : cardData.image_back_png!;
-          reqCards.push({ count: card.quantity, url });
+      let url: string;
+      if (card.face === "front") {
+        url = info.images.front_png;
+      } else {
+        if (!info.images.back_png) {
+          setMessage(
+            `Error fetching card data (${card.id} missing back image)`,
+          );
+          return;
         }
+        url = info.images.back_png;
       }
+      reqCards.push({ count: card.quantity, url });
     }
     const request: WorkerRequest = {
       type: "print",

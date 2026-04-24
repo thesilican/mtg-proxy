@@ -3,31 +3,31 @@ import { useAppDispatch, useAppSelector } from "../../state";
 import { printAction } from "../../state/print";
 import { Button } from "../common/Button/Button";
 import { Dialog } from "../common/Dialog/Dialog";
-import { buttonRow, cancel, dialog, message } from "./Clear.css";
+import * as styles from "./Clear.css";
 
 export function Clear() {
   const dispatch = useAppDispatch();
   const cardCount = useAppSelector((s) => s.print.cards.length);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [open, setOpen] = useState(false);
 
   const handleClick = () => {
     dispatch(printAction.clear());
-    setDialogOpen(false);
+    setOpen(false);
   };
 
   return (
     <>
       <Dialog
-        className={dialog}
-        open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
+        className={styles.dialog}
+        open={open}
+        onClose={() => setOpen(false)}
       >
-        <p className={message}>Remove all cards?</p>
-        <div className={buttonRow}>
+        <p className={styles.message}>Remove all cards?</p>
+        <div className={styles.buttonRow}>
           <Button variant="danger" onClick={handleClick}>
             Clear
           </Button>
-          <Button className={cancel} onClick={() => setDialogOpen(false)}>
+          <Button className={styles.cancel} onClick={() => setOpen(false)}>
             Cancel
           </Button>
         </div>
@@ -35,7 +35,7 @@ export function Clear() {
       <Button
         variant="danger"
         disabled={cardCount === 0}
-        onClick={() => setDialogOpen(true)}
+        onClick={() => setOpen(true)}
       >
         Clear
       </Button>

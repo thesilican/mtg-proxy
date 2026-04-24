@@ -1,55 +1,89 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
-export type ApiAutocompleteResponse = {
-  names: string[];
-  exact: string[];
+type ApiCardImages = {
+  front_jpg: string;
+  back_jpg: string | null;
+  front_png: string;
+  back_png: string | null;
 };
 
-export type BackendCard = {
+export type ApiCard = {
   id: string;
   name: string;
-  image_front_large: string;
-  image_front_png: string;
-  image_back_large: string | null;
-  image_back_png: string | null;
+  flavor_name: string | null;
   set: string;
   set_name: string;
   collector_number: string;
-  released_at: string;
+  images: ApiCardImages;
   preferred: boolean;
 };
 
-export type ApiCardResponse = {
-  cards: BackendCard[];
+export type ImportCard = {
+  name: string;
+  set: string | null;
+  collector_number: string | null;
 };
+
+type ApiImportCard =
+  | {
+      success: true;
+      card: ApiCard;
+    }
+  | {
+      success: false;
+      message: string;
+    };
 
 export const scryfallApi = createApi({
   reducerPath: "api",
   baseQuery: fetchBaseQuery({ baseUrl: import.meta.env.BASE_URL }),
   endpoints: (builder) => ({
-    autocomplete: builder.query<ApiAutocompleteResponse, string>({
-      query: (query) => {
-        const q = encodeURIComponent(query);
-        return `/api/autocomplete?q=${q}`;
+    search: builder.query<{ cards: ApiCard[] }, { q: string }>({
+      query: ({ q }) => {
+        return `/api/search?q=${encodeURIComponent(q)}`;
       },
     }),
-    card: builder.query<ApiCardResponse, string>({
-      query: (name) => {
-        const q = encodeURIComponent(name);
-        return `/api/search?q=${q}`;
+    cards: builder.query<
+      { cards: ApiCard[] },
+      { name: string } | { ids: string[] }
+    >({
+      query: (params) => {
+        if ("name" in params) {
+          return `/api/cards?name=${encodeURIComponent(params.name)}`;
+        } else {
+          return `/api/cards?ids=${encodeURIComponent(params.ids.join(","))}`;
+        }
       },
+    }),
+    import: builder.query<
+      { results: ApiImportCard[] },
+      { cards: ImportCard[] }
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/import",
+        body,
+      }),
     }),
   }),
 });
 
 export const {
-  useAutocompleteQuery,
-  useLazyAutocompleteQuery,
-  useCardQuery,
-  useLazyCardQuery,
+  useSearchQuery,
+  useLazySearchQuery,
+  useCardsQuery,
+  useLazyCardsQuery,
+  useImportQuery,
+  useLazyImportQuery,
 } = scryfallApi;
 
-export function getPreferredCard(cards: BackendCard[]): BackendCard {
+export function isDfc(card: ApiCard): card is ApiCard & {
+  images: ApiCardImages & { back_jpg: string; back_png: string };
+} {
+  return card.images.back_jpg !== null && card.images.back_png !== null;
+}
+
+export function getPreferredCard(cards: ApiCard[]): ApiCard {
   for (const card of cards) {
     if (card.preferred) {
       return card;

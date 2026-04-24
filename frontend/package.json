@@ -6,12 +6,13 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.0.1",
     "classnames": "^2.3.2",
+    "jszip": "^3.10.1",
     "mtg-print": "file:../wasm/pkg",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

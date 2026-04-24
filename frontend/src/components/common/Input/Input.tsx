@@ -5,7 +5,7 @@ import {
   Ref,
 } from "react";
 import cn from "classnames";
-import { input } from "./Input.css";
+import * as styles from "./Input.css";
 import React from "react";
 
 type Props = {
@@ -23,7 +23,9 @@ type Props = {
 
 export const Input = React.forwardRef(function Input(
   props: Props,
-  ref?: Ref<HTMLInputElement>
+  ref?: Ref<HTMLInputElement>,
 ) {
-  return <input {...props} ref={ref} className={cn(input, props.className)} />;
+  return (
+    <input {...props} ref={ref} className={cn(styles.input, props.className)} />
+  );
 });

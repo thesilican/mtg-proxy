@@ -1,12 +1,19 @@
 import { style } from "@vanilla-extract/css";
-import { vars } from "../../style/global.css";
+import { vars } from "../../global.css";
+
+export const wrapper = style({
+  flex: "1",
+  display: "flex",
+  alignItems: "start",
+  justifyContent: "center",
+  padding: "16px 24px",
+});
 
 export const container = style({
+  width: "100%",
   display: "grid",
   rowGap: "16px",
   columnGap: "8px",
-  minHeight: "400px",
-  padding: "16px 0px",
   justifyItems: "center",
   gridTemplateColumns: "repeat(1, 1fr)",
   "@media": {
@@ -26,10 +33,15 @@ export const container = style({
 });
 
 export const placeholder = style({
+  background: vars.glass,
+  padding: "8px",
+  borderRadius: "8px",
+  textAlign: "center",
+  margin: "64px",
   gridColumn: "1 / -1",
 });
 
-export const cardStyle = style({
+export const card = style({
   width: "180px",
   display: "flex",
   flexDirection: "column",
@@ -52,7 +64,7 @@ export const spacer = style({
 });
 
 export const img = style({
-  borderRadius: "6px",
+  borderRadius: "8px",
   width: "180px",
   height: "252px",
 });
@@ -64,5 +76,5 @@ export const select = style({
   width: "175px",
   borderRadius: "4px",
   border: `1px solid ${vars.gray5}`,
-  backgroundColor: vars.white,
+  backgroundColor: vars.glass,
 });

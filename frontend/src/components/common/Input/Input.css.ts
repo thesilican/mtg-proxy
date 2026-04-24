@@ -1,10 +1,9 @@
 import { style } from "@vanilla-extract/css";
-import { vars } from "../../../style/global.css";
+import { vars } from "../../../global.css";
 
 export const input = style({
   borderRadius: "4px",
-  border: `1px solid ${vars.gray5}`,
-  backgroundColor: vars.white,
+  backgroundColor: vars.glass,
   outline: "none",
   ":focus-visible": {
     borderColor: vars.blue6,
