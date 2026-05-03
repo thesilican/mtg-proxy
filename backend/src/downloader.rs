@@ -2,7 +2,6 @@ use crate::{canonicalize_name, database::Card};
 use crate::{normalize_name, split_normalize_name};
 use anyhow::{Context, Result, bail};
 use chrono::NaiveDate;
-use log::warn;
 use reqwest::{Client, Url};
 use serde::Deserialize;
 use std::collections::HashSet;
@@ -47,6 +46,7 @@ impl SfImageUris {
 #[derive(Deserialize)]
 pub struct SfCardFace {
     pub name: String,
+    pub printed_name: Option<String>,
     pub flavor_name: Option<String>,
     pub image_uris: Option<SfImageUris>,
 }
@@ -55,6 +55,7 @@ pub struct SfCardFace {
 pub struct SfCard {
     pub id: String,
     pub name: String,
+    pub printed_name: Option<String>,
     pub flavor_name: Option<String>,
     pub image_uris: Option<SfImageUris>,
     pub card_faces: Option<Vec<SfCardFace>>,
@@ -142,6 +143,11 @@ impl Downloader {
                 let (f, b) = split_normalize_name(&name);
                 normal_flavor_name_front = Some(f);
                 normal_flavor_name_back = b;
+            } else if let Some(name) = sf_card.printed_name {
+                flavor_name = Some(canonicalize_name(&name));
+                let (f, b) = split_normalize_name(&name);
+                normal_flavor_name_front = Some(f);
+                normal_flavor_name_back = b;
             }
             let mut image_front_jpg = None;
             let mut image_front_png = None;
@@ -161,9 +167,12 @@ impl Downloader {
                         image_front_jpg = Some(imgs.jpg_clean()?);
                         image_front_png = Some(imgs.png_clean()?);
                     }
-                    if let Some(flavor_name) = &front.flavor_name {
-                        flavor_name_front = Some(canonicalize_name(&flavor_name));
-                        normal_flavor_name_front = Some(normalize_name(&flavor_name));
+                    if let Some(name) = &front.flavor_name {
+                        flavor_name_front = Some(canonicalize_name(&name));
+                        normal_flavor_name_front = Some(normalize_name(&name));
+                    } else if let Some(name) = &front.printed_name {
+                        flavor_name_front = Some(canonicalize_name(&name));
+                        normal_flavor_name_front = Some(normalize_name(&name));
                     }
                 }
                 if let Some(back) = faces.get(1) {
@@ -171,9 +180,12 @@ impl Downloader {
                         image_back_jpg = Some(imgs.jpg_clean()?);
                         image_back_png = Some(imgs.png_clean()?);
                     }
-                    if let Some(flavor_name) = &back.flavor_name {
-                        flavor_name_back = Some(canonicalize_name(&flavor_name));
-                        normal_flavor_name_back = Some(normalize_name(&flavor_name));
+                    if let Some(name) = &back.flavor_name {
+                        flavor_name_back = Some(canonicalize_name(&name));
+                        normal_flavor_name_back = Some(normalize_name(&name));
+                    } else if let Some(name) = &back.printed_name {
+                        flavor_name_back = Some(canonicalize_name(&name));
+                        normal_flavor_name_back = Some(normalize_name(&name));
                     }
                 }
                 if let Some(front) = flavor_name_front {
@@ -195,7 +207,6 @@ impl Downloader {
 
             let (Some(image_front_jpg), Some(image_front_png)) = (image_front_jpg, image_front_png)
             else {
-                warn!("Card {id} ({name}) is missing front image, skipping");
                 continue;
             };
 

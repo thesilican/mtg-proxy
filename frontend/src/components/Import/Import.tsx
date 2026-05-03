@@ -33,11 +33,15 @@ export function Import() {
       const cards: ImportCard[] = [];
       for (const line of text.split("\n")) {
         const trimmed = line.trim();
-        if (trimmed.startsWith("#") || trimmed.length === 0) {
+        if (
+          trimmed.startsWith("#") ||
+          trimmed.length === 0 ||
+          trimmed === "SIDEBOARD:"
+        ) {
           continue;
         }
         const match = line.match(
-          /^(?:(\d+)x?\s+)?([^(]+)(?:\(([a-zA-Z0-9]+)\))?(?:\s*([a-zA-Z-0-9]+))?[^(]*$/,
+          /^(?:(\d+)x?\s+)?([^(]+)(?:\(([a-zA-Z0-9]+)\))?(?:\s*([-a-zA-Z-0-9_★†Φ]+))?[^(]*$/,
         );
         if (match === null) {
           errors.push(`Invalid format: ${JSON.stringify(line)}`);
