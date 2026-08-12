@@ -2,9 +2,11 @@ use crate::{canonicalize_name, database::Card};
 use crate::{normalize_name, split_normalize_name};
 use anyhow::{Context, Result, bail};
 use chrono::NaiveDate;
+use flate2::bufread::GzDecoder;
 use reqwest::{Client, Url};
 use serde::Deserialize;
 use std::collections::HashSet;
+use std::io::Read;
 
 static SF_BULK_DATA_URL: &str = "https://api.scryfall.com/bulk-data";
 static USER_AGENT: &str = "reqwest/0.12.3";
@@ -16,7 +18,7 @@ struct SfBulkDataList {
 
 #[derive(Deserialize)]
 struct SfBulkDataItem {
-    download_uri: String,
+    jsonl_download_uri: String,
     r#type: String,
 }
 
@@ -103,18 +105,10 @@ impl Downloader {
         };
 
         let default = self
-            .client
-            .get(&default.download_uri)
-            .send()
-            .await?
-            .json::<Vec<SfCard>>()
+            .fetch_cards_from_jsonl_uri(&default.jsonl_download_uri)
             .await?;
         let oracle = self
-            .client
-            .get(&oracle.download_uri)
-            .send()
-            .await?
-            .json::<Vec<SfCard>>()
+            .fetch_cards_from_jsonl_uri(&oracle.jsonl_download_uri)
             .await?;
         // The oracle cards are the preferred printing of each card
         let preferred = oracle
@@ -123,6 +117,19 @@ impl Downloader {
             .collect::<HashSet<_>>();
 
         Ok((default, preferred))
+    }
+
+    async fn fetch_cards_from_jsonl_uri(&self, uri: &str) -> Result<Vec<SfCard>> {
+        let bytes = self.client.get(uri).send().await?.bytes().await?;
+        let mut data = GzDecoder::new(bytes.as_ref());
+        let mut buf = String::new();
+        data.read_to_string(&mut buf)?;
+        let mut cards = Vec::new();
+        for line in buf.lines() {
+            let card: SfCard = serde_json::from_str(line)?;
+            cards.push(card);
+        }
+        Ok(cards)
     }
 
     fn process_cards(

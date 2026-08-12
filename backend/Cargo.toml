@@ -8,6 +8,7 @@ anyhow = "1.0.82"
 axum = { version = "0.7.5", features = ["macros"] }
 chrono = { version = "0.4.38", features = ["serde"] }
 env_logger = "0.11.3"
+flate2 = "1.1.9"
 log = "0.4.21"
 regex = "1.12.3"
 reqwest = { version = "0.12.3", features = ["json"] }
