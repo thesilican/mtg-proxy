@@ -1,31 +1,30 @@
-import {
-  ChangeEventHandler,
-  HTMLInputTypeAttribute,
-  KeyboardEventHandler,
-  Ref,
-} from "react";
 import cn from "classnames";
+import React, {
+	type ChangeEventHandler,
+	type HTMLInputTypeAttribute,
+	type KeyboardEventHandler,
+	type Ref,
+} from "react";
 import * as styles from "./Input.css";
-import React from "react";
 
 type Props = {
-  className?: string;
-  type?: HTMLInputTypeAttribute;
-  value?: string | number | readonly string[];
-  min?: string | number;
-  max?: string | number;
-  placeholder?: string;
-  autoFocus?: boolean;
-  disabled?: boolean;
-  onChange?: ChangeEventHandler<HTMLInputElement>;
-  onKeyDown?: KeyboardEventHandler<HTMLInputElement>;
+	className?: string;
+	type?: HTMLInputTypeAttribute;
+	value?: string | number | readonly string[];
+	min?: string | number;
+	max?: string | number;
+	placeholder?: string;
+	autoFocus?: boolean;
+	disabled?: boolean;
+	onChange?: ChangeEventHandler<HTMLInputElement>;
+	onKeyDown?: KeyboardEventHandler<HTMLInputElement>;
 };
 
 export const Input = React.forwardRef(function Input(
-  props: Props,
-  ref?: Ref<HTMLInputElement>,
+	props: Props,
+	ref?: Ref<HTMLInputElement>,
 ) {
-  return (
-    <input {...props} ref={ref} className={cn(styles.input, props.className)} />
-  );
+	return (
+		<input {...props} ref={ref} className={cn(styles.input, props.className)} />
+	);
 });

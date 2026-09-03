@@ -1,32 +1,32 @@
-import { PayloadAction, createSlice } from "@reduxjs/toolkit";
+import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
 export type UiState = {
-  snackbar: Snackbar;
+	snackbar: Snackbar;
 };
 
 export type Snackbar = {
-  message: string;
-  status: "error" | "info";
-  shown: boolean;
+	message: string;
+	status: "error" | "info";
+	shown: boolean;
 };
 
 const initialState: UiState = {
-  snackbar: {
-    message: "",
-    status: "info",
-    shown: false,
-  },
+	snackbar: {
+		message: "",
+		status: "info",
+		shown: false,
+	},
 };
 
 export const uiSlice = createSlice({
-  name: "ui",
-  initialState,
-  reducers: {
-    setSnackbar(state, action: PayloadAction<Partial<Snackbar>>) {
-      state.snackbar = {
-        ...state.snackbar,
-        ...action.payload,
-      };
-    },
-  },
+	name: "ui",
+	initialState,
+	reducers: {
+		setSnackbar(state, action: PayloadAction<Partial<Snackbar>>) {
+			state.snackbar = {
+				...state.snackbar,
+				...action.payload,
+			};
+		},
+	},
 });
