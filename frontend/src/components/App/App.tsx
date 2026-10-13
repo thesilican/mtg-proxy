@@ -1,5 +1,7 @@
 import cn from "classnames";
+import { useLayoutEffect } from "react";
 import * as globalStyles from "../../global.css";
+import { useAppSelector } from "../../state";
 import { CardInput } from "../CardInput/CardInput";
 import { CardPreview } from "../CardPreview/CardPreview";
 import { Clear } from "../Clear/Clear";
@@ -12,9 +14,20 @@ import { Status } from "../Status/Status";
 import * as styles from "./App.css";
 
 export function App() {
+	// Change background blur effect based on whether there are cards to display
+	const hasCards = useAppSelector((state) => state.print.cards.length > 0);
+	useLayoutEffect(() => {
+		const classes = document.body.classList;
+		if (hasCards) {
+			classes.add(globalStyles.blurred);
+		} else {
+			classes.remove(globalStyles.blurred);
+		}
+		return () => classes.remove(globalStyles.blurred);
+	}, [hasCards]);
+
 	return (
 		<div className={cn(styles.app, globalStyles.defaultTheme)}>
-			<div className={styles.background} />
 			<div className={styles.header}>
 				<div className={styles.titleBox}>
 					<h1>MTG Proxy Maker</h1>
@@ -38,13 +51,13 @@ export function App() {
 					<p className={styles.artistCredit}>
 						Background:{" "}
 						<a
-							href="https://www.artstation.com/artwork/kD2ozd"
+							href="https://algenpfleger.artstation.com/projects/GaWG4d"
 							target="_blank"
 							rel="noopener"
 						>
-							Needleverge Pathway
+							Island
 						</a>{" "}
-						by Piotr Dura
+						by Johannes Voss
 					</p>
 				</div>
 			</div>

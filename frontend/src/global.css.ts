@@ -1,4 +1,4 @@
-import { createTheme, globalStyle } from "@vanilla-extract/css";
+import { createTheme, globalStyle, style } from "@vanilla-extract/css";
 
 export const [defaultTheme, vars] = createTheme({
 	white: "#fff",
@@ -12,16 +12,25 @@ export const [defaultTheme, vars] = createTheme({
 	gray8: "#343a40",
 	gray9: "#212529",
 	black: "#000",
-	blue5: "#0d6efd",
-	blue6: "#0a58ca",
-	red5: "#dc3545",
-	red6: "#b02a37",
+	blue5: "hsl(230, 50%, 50%)",
+	blue6: "hsl(240, 50%, 40%)",
+	red5: "hsl(354, 70%, 50%)",
+	red6: "hsl(354, 60%, 40%)",
 	glass: "#fffd",
 	shadow: "0px 2px 4px 0px rgba(0, 0, 0, 0.4)",
 });
 
 globalStyle("body", {
 	fontFamily: "Rubik, sans-serif",
+	backgroundImage: `url(/background.jpg)`,
+	backgroundAttachment: "fixed",
+	backgroundSize: "cover",
+	backgroundPosition: "center",
+	transition: "background-image 0.1s ease-in-out",
+});
+
+export const blurred = style({
+	backgroundImage: `url(/background-blur.jpg)`,
 });
 
 globalStyle("p, h1", {

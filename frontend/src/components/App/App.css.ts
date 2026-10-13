@@ -10,20 +10,6 @@ export const app = style({
 	zIndex: 2,
 });
 
-export const background = style({
-	position: "fixed",
-	top: "0",
-	left: "0",
-	width: "100vw",
-	height: "100vh",
-	zIndex: "-1",
-	backgroundColor: vars.gray1,
-	backgroundSize: "cover",
-	backgroundAttachment: "fixed",
-	backgroundPosition: "center",
-	backgroundImage: `url(/background.jpg)`,
-});
-
 export const header = style({
 	display: "flex",
 	flexDirection: "column",

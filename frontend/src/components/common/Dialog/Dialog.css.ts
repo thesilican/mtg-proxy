@@ -1,5 +1,10 @@
-import { style } from "@vanilla-extract/css";
+import { keyframes, style } from "@vanilla-extract/css";
 import { vars } from "../../../global.css";
+
+const fadeIn = keyframes({
+	"0%": { opacity: 0 },
+	"100%": { opacity: 1 },
+});
 
 export const dialog = style({
 	position: "fixed",
@@ -18,4 +23,5 @@ export const dialog = style({
 			display: "flex",
 		},
 	},
+	animation: `${fadeIn} 0.1s ease`,
 });

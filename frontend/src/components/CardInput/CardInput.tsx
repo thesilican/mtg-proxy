@@ -86,7 +86,7 @@ export function CardInput() {
 				ref={ref}
 				className={styles.inputField}
 				type="text"
-				placeholder="Enter a card name"
+				placeholder="Enter a card name (press '/' to focus)"
 				value={input}
 				onChange={(e) => {
 					setActiveIdx(0);

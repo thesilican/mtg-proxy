@@ -1,4 +1,4 @@
-import { style } from "@vanilla-extract/css";
+import { keyframes, style } from "@vanilla-extract/css";
 import { vars } from "../../global.css";
 
 export const wrapper = style({
@@ -32,13 +32,20 @@ export const container = style({
 	},
 });
 
+const fadeIn = keyframes({
+	"0%": { opacity: 0 },
+	"100%": { opacity: 1 },
+});
+
 export const placeholder = style({
 	background: vars.glass,
-	padding: "8px",
+	padding: "24px",
 	borderRadius: "8px",
 	textAlign: "center",
 	margin: "64px",
 	gridColumn: "1 / -1",
+	animation: `${fadeIn} 0.1s ease`,
+	maxWidth: "300px",
 });
 
 export const card = style({
