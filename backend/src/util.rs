@@ -8,14 +8,11 @@ pub fn canonicalize_name(name: &str) -> String {
 /// Normalize a string for string fuzzy search
 pub fn normalize_name(name: &str) -> String {
     let mut output = String::new();
-    let mut last_char_space = false;
     for char in name.trim().nfkd() {
         if char.is_ascii_alphanumeric() {
             output.push(char.to_ascii_lowercase());
-            last_char_space = false;
-        } else if char.is_whitespace() && !last_char_space {
+        } else if char.is_whitespace() && !output.ends_with('-') {
             output.push('-');
-            last_char_space = true;
         }
     }
     output
