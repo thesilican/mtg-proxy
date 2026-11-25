@@ -33,7 +33,19 @@ export function Export() {
 			return "An unexpected error has occurred.";
 		}
 		const lines = [];
-		for (const { quantity, id } of cards) {
+		for (let i = 0; i < cards.length; i++) {
+			const { quantity, id, face } = cards[i];
+			// If this is the back of a DFC and the previous card is the front of the
+			// same card, don't include in export.
+			const prev = cards[i - 1];
+			if (
+				face === "back" &&
+				prev?.id === id &&
+				prev.face === "front" &&
+				prev.quantity === quantity
+			) {
+				continue;
+			}
 			const apiCard = cardsMap.get(id);
 			if (!apiCard) {
 				lines.push("???");
