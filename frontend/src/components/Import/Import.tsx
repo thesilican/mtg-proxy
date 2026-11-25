@@ -12,7 +12,7 @@ Treasure Cruise
 Ledger Shredder (SNC)
 Consider (MID) 44
 2 Thing in the Ice
-4 Arclight Phoenix (RVR)
+4 Arclight Phoenix [RVR]
 4 Opt (ELD) 49`;
 
 export function Import() {
@@ -41,7 +41,7 @@ export function Import() {
 					continue;
 				}
 				const match = line.match(
-					/^(?:(\d+)x?\s+)?([^(]+)(?:\(([a-zA-Z0-9]+)\))?(?:\s*([-a-zA-Z-0-9_★†Φ]+))?[^(]*$/,
+					/^(?:(\d+)x?\s+)?([^([]+)(?:\(([a-zA-Z0-9]+)\)|\[([a-zA-Z0-9]+)\])?(?:\s*([-a-zA-Z-0-9_★†Φ]+))?[^([]*$/,
 				);
 				if (match === null) {
 					errors.push(`Invalid format: ${JSON.stringify(line)}`);
@@ -49,8 +49,8 @@ export function Import() {
 				}
 				const count = match[1] ? parseInt(match[1], 10) : 1;
 				const name = match[2].trim();
-				const set = match[3];
-				const collector_number = match[4];
+				const set = match[3] ?? match[4];
+				const collector_number = match[5];
 				counts.push(count);
 				cards.push({ set, name, collector_number });
 			}
